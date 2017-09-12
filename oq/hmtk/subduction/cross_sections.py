@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import re
 import numpy
 from openquake.hazardlib.geo.line import Line
