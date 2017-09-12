@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 
 import re
 import numpy
@@ -24,6 +25,9 @@ class CrossSectionData:
         self.trench = None
         self.moho = None
         self.gcmt = None
+        self.topo = None
+        self.litho = None
+        self.volc = None
 
     def set_trench_axis(self, filename):
         """
@@ -38,7 +42,7 @@ class CrossSectionData:
         fin.close()
         self.trench = numpy.array(trench)
 
-    def set_catalogue(self, catalogue, bffer=50.):
+    def set_catalogue(self, catalogue, bffer=75.):
         """
         """
         idxs = self.csec.get_eqks_within_buffer(catalogue, bffer)
@@ -48,7 +52,7 @@ class CrossSectionData:
         newcat = selector.select_catalogue(boo)
         self.ecat = newcat
 
-    def set_slab1pt0(self, filename, bffer=2.5):
+    def set_slab1pt0(self, filename, bffer=1.0):
         """
         :parameter filename:
             The name of a .xyz grid containing Slab 1.0 data
@@ -81,7 +85,7 @@ class CrossSectionData:
             self.slab1pt0 = numpy.squeeze(slab1pt0[idxslb,:])
 
 
-    def set_crust1pt0_moho_depth(self, filename, bffer=100.):
+    def set_crust1pt0_moho_depth(self, filename, bffer=200.):
         """
         :parameter filename:
             The name of the file containing the CRUST 1.0 model
@@ -104,7 +108,32 @@ class CrossSectionData:
             boo[idxs[0]] = 1
             self.moho = numpy.squeeze(dataa[idxs,:])
 
-    def set_gcmt(self, filename, bffer=50.):
+
+    def set_litho_moho_depth(self, filename, bffer=100.):
+        """
+        :parameter filename:
+            The name of the file containing the LITHO model
+        :return:
+            A numpy array
+        """
+        datal = []
+        for line in open(filename, 'r'):
+            xx = re.split('\s+', re.sub('\s+$', '', re.sub('^\s+', '', line)))
+            datal.append([float(val) for val in xx])
+        dataa = numpy.array(datal)
+        minlo, maxlo, minla, maxla = self.csec.get_mm()
+        idxl = self.csec.get_grd_nodes_within_buffer(dataa[:,0],
+                                                     dataa[:,1],
+                                                     bffer,
+                                                     minlo, maxlo,
+                                                     minla, maxla)
+        if idxl is not None and len(idxl):
+            boo = numpy.zeros_like(dataa[:, 0], dtype=int)
+            boo[idxl[0]] = 1
+            self.litho = numpy.squeeze(dataa[idxl,:])
+
+
+    def set_gcmt(self, filename, bffer=75.):
         """
         :parameter cmt_cat:
 
@@ -120,13 +149,52 @@ class CrossSectionData:
             cmt_cat.select_catalogue_events(idxs)
             self.gcmt = cmt_cat
 
-    def set_topography(self, filename):
+    def set_topo(self, filename,bffer=0.25):
         """
         :parameter filename:
             Name of the grid file containing the topography
         """
-        pass
+        datat = []
+        for line in open(filename, 'r'):
+            tt = re.split('\s+', re.sub('\s+$', '', re.sub('^\s+', '', line)))
+            datat.append([float(val) for val in tt])
+        datab = numpy.array(datat)
+        minlo, maxlo, minla, maxla = self.csec.get_mm()
+        idxb = self.csec.get_grd_nodes_within_buffer(datab[:,0],
+                                                     datab[:,1],
+                                                     bffer,
+                                                     minlo, maxlo,
+                                                     minla, maxla)
+        if idxb is not None and len(idxb):
+            boo = numpy.zeros_like(datab[:, 0], dtype=int)
+            boo[idxb[0]] = 1
+            self.topo = numpy.squeeze(datab[idxb,:])
 
+    def set_volcano(self, filename, bffer=75.):
+        """
+        :parameter filename:
+            Name of the file containing the volcano list
+        """
+        fin = open(filename, 'r')
+        datav = []
+        for line in fin:
+            vv = re.split('\s+', re.sub('^\s+', '', line))
+            datav.append((float(vv[0]), float(vv[1])))
+        
+        vulc = numpy.array(datav)
+        minlo, maxlo, minla, maxla = self.csec.get_mm()
+        idxv = self.csec.get_grd_nodes_within_buffer(vulc[:,0],
+                                                     vulc[:,1],
+                                                     bffer,
+                                                     minlo, maxlo,
+                                                     minla, maxla)
+
+        if idxv is not None and len(idxv):
+            voo = numpy.zeros_like(vulc[:, 0], dtype=int)
+            voo[idxv[0]] = 1
+            self.volc = numpy.squeeze(vulc[idxv,:])
+        fin.close()
+        print(self.volc)
 
 
 class Trench:
@@ -142,9 +210,10 @@ class Trench:
         `axis` parameter is 2
     """
 
-    def __init__(self, axis, strike=None):
+    def __init__(self, axis, strike=None, azim=None):
         self.axis = axis
         self.strike = strike
+        self.azim = azim
 
     def resample(self, distance):
         """
@@ -163,7 +232,7 @@ class Trench:
         az[-1] = az[-2]
         return Trench(naxis, az)
 
-    def iterate_cross_sections(self, distance, length):
+    def iterate_cross_sections(self, distance, length, azim=[]):
         """
         :parameter distance:
             Distance between traces along the trench axis [in km]
@@ -173,13 +242,26 @@ class Trench:
         trch = self.resample(distance)
         for idx, coo in enumerate(trch.axis.tolist()):
             if idx < len(trch.axis[:, 1]) - 1:
-                strike = azimuth(coo[0], coo[1],
+                    strike = azimuth(coo[0], coo[1],
                                  trch.axis[idx + 1, 0],
                                  trch.axis[idx + 1, 1])
-                yield CrossSection(coo[0],
-                                   coo[1],
-                                   [length],
-                                   [(strike - 90) % 360])
+                #if azim is not None:
+                #    yield CrossSection(coo[0],
+                #                       coo[1],
+                #                       [length],
+                #                       [azim])
+                #    #print("profile_id=  %d,strike trench = %d, profile angle= %d" % (idx,strike,azim))
+                #else:
+                    yield CrossSection(coo[0],
+                                       coo[1],
+                                       [length],
+                                       #[(strike - 90) % 360])                                      
+                                       [(strike + 90) % 360])
+
+                    print("profile_id=  %d,strike trench = %d, profile angle= %d" % (idx, 
+                                                                                 strike, 
+                                                                                (strike + 90) % 360))
+                                                                                #(strike - 90) % 360))
             else:
                 yield
         return
@@ -226,6 +308,7 @@ class CrossSection:
     """
 
     def __init__(self, olo, ola, length, strike, ids='cs'):
+        #self.depth = depth
         self.length = length
         self.strike = strike
         self.olo = olo
