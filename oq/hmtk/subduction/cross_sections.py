@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import re
 import numpy
 from openquake.hazardlib.geo.line import Line
@@ -245,23 +243,11 @@ class Trench:
                     strike = azimuth(coo[0], coo[1],
                                  trch.axis[idx + 1, 0],
                                  trch.axis[idx + 1, 1])
-                #if azim is not None:
-                #    yield CrossSection(coo[0],
-                #                       coo[1],
-                #                       [length],
-                #                       [azim])
-                #    #print("profile_id=  %d,strike trench = %d, profile angle= %d" % (idx,strike,azim))
-                #else:
                     yield CrossSection(coo[0],
                                        coo[1],
                                        [length],
-                                       #[(strike - 90) % 360])                                      
                                        [(strike + 90) % 360])
 
-                    print("profile_id=  %d,strike trench = %d, profile angle= %d" % (idx, 
-                                                                                 strike, 
-                                                                                (strike + 90) % 360))
-                                                                                #(strike - 90) % 360))
             else:
                 yield
         return
@@ -308,7 +294,6 @@ class CrossSection:
     """
 
     def __init__(self, olo, ola, length, strike, ids='cs'):
-        #self.depth = depth
         self.length = length
         self.strike = strike
         self.olo = olo

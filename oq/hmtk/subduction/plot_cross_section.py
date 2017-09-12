@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import re
 import sys
 import pickle
@@ -25,13 +23,6 @@ from openquake.hazardlib.geo.geodetic import geodetic_distance
 from openquake.hazardlib.geo.geodetic import point_at
 
 # basic settings
-#MAX_DEPTH = 250
-#YPAD = 10
-#MAX_DIST = 450
-#fig_length = 12
-
-
-# basic settings
 MAX_DEPTH = 350
 YPAD = 10
 MAX_DIST = 1000
@@ -50,7 +41,7 @@ def onclick(event):
     print('button=%d, x=%d, y=%d, xdata=%f, ydata=%f' %
           (event.button, event.x, event.y, event.xdata, event.ydata))
 
-def _plot_h_eqk_histogram(axes, csda,dep_max=[],dis_max=[]):
+def _plot_h_eqk_histogram(axes, csda, dep_max=[], dis_max=[]):
     """
     """
     if csda.ecat is None or csda.gcmt is None:
@@ -113,7 +104,6 @@ def _plot_h_eqk_histogram(axes, csda,dep_max=[],dis_max=[]):
     else:
        axes.set_xlim([0, MAX_DIST])
 
-    #axes.set_xlim([0, 500])
 
 def _plot_v_eqk_histogram(axes, csda, dep_max=[], dis_max=[]):
 
@@ -133,10 +123,6 @@ def _plot_v_eqk_histogram(axes, csda, dep_max=[], dis_max=[]):
        edges_dep = numpy.arange(0, MAX_DEPTH, 5)
        edges_dist = numpy.arange(0, MAX_DIST, 5)
     
-
-    #edges_dep = numpy.arange(0, MAX_DEPTH, 5)
-    #edges_dist = numpy.arange(0, MAX_DIST, 5)
-
     seism_depth_hist = scipy.histogram(tmp_dep[iii], edges_dep)
 
     plt.barh(edges_dep[:-1], seism_depth_hist[0],
@@ -161,7 +147,6 @@ def _plot_slab1pt0(axes, csda):
     :parameter csda:
     """
     if csda.slab1pt0 is None:
-        print("no hay slab1.0")
         return
     plt.sca(axes)
     olo = csda.csec.olo
@@ -227,7 +212,6 @@ def _plot_focal_mech(axes, csda):
     :parameter csda:
     """
     if csda.gcmt is None:
-        print("No hay mecanismos focales...")
         return
 
     olo = csda.csec.olo
@@ -257,16 +241,9 @@ def _plot_focal_mech(axes, csda):
             com = eve.moment_tensor._to_6component()
             # REMOVE
             try:
-                #print (com, xy=(ddd, dep), width=eve.magnitude*3,
-                #            linewidth=1, zorder=20, size=mag,
-                #            facecolor=KAVERINA[mclass])
-                bcc = beach(com, xy=(ddd, dep), width=eve.magnitude*2,
+               bcc = beach(com, xy=(ddd, dep), width=eve.magnitude*2,
                             linewidth=1, zorder=20, size=mag,
                             facecolor=KAVERINA[mclass])
-
-                #bcc = beach(com, xy=(ddd, dep), width=eve.magnitude*3,
-                #            linewidth=1, zorder=20, size=mag,
-                #            facecolor=KAVERINA[mclass])
                 bcc.set_alpha(0.5)
                 axes.add_collection(bcc)
             except:
@@ -280,7 +257,6 @@ def _plot_moho(axes, csda):
     :parameter csda:
     """
     if csda.moho is None:
-        print("No hay CRUST1.0...")
         return
     plt.sca(axes)
     olo = csda.csec.olo
@@ -315,7 +291,6 @@ def _plot_topo(axes, csda):
     :parameter csda:
     """
     if csda.topo is None:
-        print("Se perdio la topo...")
         return
     plt.sca(axes)
     olo = csda.csec.olo
@@ -332,12 +307,7 @@ def _plot_volc(axes, csda):
     :parameter csda:
     """
     if csda.volc is None:
-        print("no hay volcanes...")
         return
-    else:
-        print("Numero = ", len(csda.volc))
-
-    #newcat = csda.ecat
 
     olo = csda.csec.olo
     ola = csda.csec.ola
@@ -372,7 +342,6 @@ def _plot_eqks(axes, csda):
     """
 
     if csda.ecat is None:
-        print("No hay terremotos...")
         return
 
     newcat = csda.ecat
@@ -382,8 +351,6 @@ def _plot_eqks(axes, csda):
     dsts = geodetic_distance(olo, ola,
                              newcat.data['longitude'],
                              newcat.data['latitude'])
-    #xg, yg, zgn, zgm = gridding(0, MAX_DIST, 0, max_depth, 5, 5, dsts, newcat.data['depth'][:],
-    #                            newcat.data['magnitude'][:])
     sze = (newcat.data['magnitude'])**0.5
     patches = []
     for dst, dep, mag in zip(dsts,
@@ -424,7 +391,7 @@ def _print_legend(axes, depp, lnght):
         axes.add_patch(box)
 
 
-def _print_info(axes, csec,depp):
+def _print_info(axes, csec, depp):
     """
     """
     plt.sca(axes)
@@ -440,10 +407,9 @@ def _print_info(axes, csec,depp):
     plt.gca().annotate(note, xy=(0.0, depp+40), xycoords='data',
                        annotation_clip=False, fontsize=8)
 
-def plot(csda,depp,lnght):
+def plot(csda, depp, lnght):
     """
     """
-
     # Computing figure width
     fig_width = fig_length * (depp+YPAD) / lnght
 
@@ -479,7 +445,6 @@ def plot(csda,depp,lnght):
     _plot_v_eqk_histogram(plt.subplot(gs[2]), csda,depp,lnght)
 
 
-
     # Main panel
     ax3 = plt.subplot(gs[3])
     ax3.autoscale(enable=False, tight=True)
@@ -489,15 +454,6 @@ def plot(csda,depp,lnght):
     plt.xlim([0, lnght])
     plt.ylim([depp, -YPAD])
     
-
-    # NO fixed limits please
-    #if dep_max and dis_max:
-    #    plt.xlim([0, dis_max])
-    #    plt.ylim([dep_max, -YPAD])
-    #else:
-    #    plt.xlim([0, MAX_DIST])
-    #    plt.ylim([MAX_DEPTH, -YPAD])
-
     ax3.grid(which='both', zorder=20)
 
     # Showing results
@@ -540,7 +496,7 @@ class LineBuilder:
                 self.point.figure.canvas.draw()
             elif event.key is 'f':
                 dat = numpy.array(self.data)
-                fname = './qqq1/cs_%s.csv' % (self.csec.ids)
+                fname = './cs_%s.csv' % (self.csec.ids)
                 numpy.savetxt(fname, dat)
                 print ('Section data saved to: %s' % (fname))
             else:
