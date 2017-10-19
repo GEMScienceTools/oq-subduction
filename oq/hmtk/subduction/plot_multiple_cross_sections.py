@@ -19,17 +19,19 @@ def main(argv):
         aa = re.split('\s+', line.rstrip())
         olo = float(aa[0])
         ola = float(aa[1])
-        lnght = float(aa[2])
-        strike = float(aa[3])
-        ids = aa[4]
-        ini_fle = aa[5]
+        depth = float(aa[2])
+        lnght = float(aa[3])
+        strike = float(aa[4])
+        ids = aa[5]
+        ini_fle = aa[6]
 
-        fig = plt_cs(olo, ola, lnght, strike, ids, ini_fle)
+        fig = plt_cs(olo, ola, depth, lnght, strike, ids, ini_fle)
         name = 'section_%s.pdf' % (ids)
         path = os.path.join(folder, name)
         fig.savefig(path, bbox_inches='tight')
-        print ('Created %s' % (path))
+        print('Created %s' % (path))
         plt.close()
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])

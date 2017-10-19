@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import re
 import sys
 import pickle
@@ -11,8 +13,7 @@ import matplotlib.gridspec as gridspec
 from obspy.imaging.beachball import beach
 
 from matplotlib.backend_bases import KeyEvent
-from matplotlib.patches import (Circle, 
-                                Rectangle)
+from matplotlib.patches import (Circle, Rectangle)
 from matplotlib.collections import PatchCollection
 
 from oq.hmtk.subduction.cross_sections import (CrossSection,
@@ -97,7 +98,7 @@ def _plot_h_eqk_histogram(axes, csda, dep_max=[], dis_max=[]):
     axes.grid(which='both', zorder=20)
     ymax = numpy.ceil(max(seism_dist_hist[0])/10.)*10.
     axes.set_ylim([0, ymax+ymax*0.05])
-    
+
     # Limits no fixed
     if dis_max:
        axes.set_xlim([0, dis_max])
@@ -115,14 +116,14 @@ def _plot_v_eqk_histogram(axes, csda, dep_max=[], dis_max=[]):
     tmp_dep = newcat.data['depth'][:]
     iii = numpy.nonzero((tmp_mag > 3.5) & (tmp_dep > 0.))
 
-    
+
     if dep_max and dis_max:
        edges_dep = numpy.arange(0, dep_max, 5)
        edges_dist = numpy.arange(0, dis_max, 5)
     else:
        edges_dep = numpy.arange(0, MAX_DEPTH, 5)
        edges_dist = numpy.arange(0, MAX_DIST, 5)
-    
+
     seism_depth_hist = scipy.histogram(tmp_dep[iii], edges_dep)
 
     plt.barh(edges_dep[:-1], seism_depth_hist[0],
@@ -241,7 +242,7 @@ def _plot_focal_mech(axes, csda):
             com = eve.moment_tensor._to_6component()
             # REMOVE
             try:
-               bcc = beach(com, xy=(ddd, dep), width=eve.magnitude*2,
+                bcc = beach(com, xy=(ddd, dep), width=eve.magnitude*2,
                             linewidth=1, zorder=20, size=mag,
                             facecolor=KAVERINA[mclass])
                 bcc.set_alpha(0.5)
@@ -373,7 +374,7 @@ def _print_legend(axes, depp, lnght):
         y = depp+27
     else:
         y = MAX_DEPTH+27
-    
+
     patches = []
     note = 'Rupture mechanism classification (Kaverina et al. 1996)'
     if depp:
@@ -395,15 +396,15 @@ def _print_info(axes, csec, depp):
     """
     """
     plt.sca(axes)
-    note = 'Cross-Section origin: %.2f %.2f' % (csec.olo, csec.ola)   
+    note = 'Cross-Section origin: %.2f %.2f' % (csec.olo, csec.ola)
     axes.annotate(note, xy=(0.0, depp+20), xycoords='data',
                      annotation_clip=False, fontsize=8)
-    
-    note = 'Cross-Section strike: %.1f [degree]' % (csec.strike[0])   
-    axes.annotate(note, xy=(0.0, depp+30), xycoords='data',
-                   annotation_clip=False, fontsize=8)   
 
-    note = 'Cross-Section lenght: %.1f [km]' % (csec.length[0])   
+    note = 'Cross-Section strike: %.1f [degree]' % (csec.strike[0])
+    axes.annotate(note, xy=(0.0, depp+30), xycoords='data',
+                   annotation_clip=False, fontsize=8)
+
+    note = 'Cross-Section lenght: %.1f [km]' % (csec.length[0])
     plt.gca().annotate(note, xy=(0.0, depp+40), xycoords='data',
                        annotation_clip=False, fontsize=8)
 
@@ -450,10 +451,10 @@ def plot(csda, depp, lnght):
     ax3.autoscale(enable=False, tight=True)
     ax3.invert_yaxis()
     #plt.xlim([0, 500])
-    
+
     plt.xlim([0, lnght])
     plt.ylim([depp, -YPAD])
-    
+
     ax3.grid(which='both', zorder=20)
 
     # Showing results
@@ -553,9 +554,9 @@ def plt_cs(olo, ola, depp, lnght, strike, ids, ini_filename):
     csda.set_topo(fname_topo)
     csda.set_litho_moho_depth(fname_litho)
     csda.set_volcano(fname_volc)
-    
+
     fig = plot(csda,depp,lnght)
-    
+
     return fig
 
 
