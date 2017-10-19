@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import os
 import re
 import sys
 import numpy
@@ -13,13 +12,11 @@ from mpl_toolkits.basemap import Basemap
 from matplotlib.patches import Circle
 from matplotlib.collections import PatchCollection
 
-#from hmtk.subduction.cross_sections import CrossSection, Trench
-#from hmtk.seismicity.selector import CatalogueSelector
 from oq.hmtk.subduction.cross_sections import CrossSection, Trench
 from openquake.hmtk.seismicity.selector import CatalogueSelector
 
 
-def get_cs(trench, ini_filename, cs_len, interdistance):
+def get_cs(trench, ini_filename, cs_len, cs_depth, interdistance):
     """
     :parameter trench:
         An instance of the :class:`Trench` class
@@ -36,17 +33,18 @@ def get_cs(trench, ini_filename, cs_len, interdistance):
     fou = open('cs_traces.cs', 'w')
 
     cs_dict = {}
-    for idx, cs in enumerate(trench.iterate_cross_sections(interdistance,
+    for idx, cs in enumerate(ts.iterate_cross_sections(interdistance,
                                                            cs_len)):
         if cs is not None:
             cs_dict['%s' % idx] = cs
-            tmps = '%f %f %f %f %d %s\n' % (cs.plo[0],
+            tmps = '%f %f %f %f %f %d %s\n' % (cs.plo[0],
                                             cs.pla[0],
+                                            cs_depth,
                                             cs_len,
                                             cs.strike[0],
                                             idx,
                                             ini_filename)
-            print (tmps.rstrip())
+            print(tmps.rstrip())
             fou.write(tmps)
     fou.close()
 
@@ -87,10 +85,10 @@ def plot(trench, cat, cs_dict, interdistance):
     # labels = [left,right,top,bottom]
     m.drawcoastlines()
     m.drawmeridians(numpy.arange(numpy.floor(minlo/10.)*10,
-                                numpy.ceil(maxlo/10.)*10,5.),
+                                numpy.ceil(maxlo/10.)*10, 5.),
                 labels=[False, False, False, True])
     m.drawparallels(numpy.arange(numpy.floor(minla/10.)*10,
-                                numpy.ceil(maxla/10.)*10,5.),
+                                numpy.ceil(maxla/10.)*10, 5.),
                 labels=[True, False, False, False])
 
     #
@@ -123,6 +121,8 @@ def plot(trench, cat, cs_dict, interdistance):
         if cs is not None:
             x, y = m(cs.plo, cs.pla)
             plt.plot(x, y, ':r', linewidth=2, zorder=20)
+            text = plt.text(x[0], y[0], '%s' % key, ha='center',
+                            va='center', size=10, zorder=30)
             text = plt.text(x[-1], y[-1], '%s' % key, ha='center',
                             va='center', size=10, zorder=30)
             text.set_path_effects([PathEffects.withStroke(linewidth=3,
@@ -141,6 +141,7 @@ def main(argv):
     fname_trench = config['data']['trench_axis_filename']
     fname_eqk_cat = config['data']['catalogue_pickle_filename']
     cs_length = float(config['section']['lenght'])
+    cs_depth = float(config['section']['dep_max'])
     interdistance = float(config['section']['interdistance'])
 
     # Load trench axis
@@ -156,7 +157,7 @@ def main(argv):
     cat = pickle.load(open(fname_eqk_cat, 'rb'))
 
     # Get cross-sections
-    cs_dict = get_cs(trench, argv[0], cs_length, interdistance)
+    cs_dict = get_cs(trench, argv[0], cs_length, cs_depth, interdistance)
 
     # Plotting
     plot(trench, cat, cs_dict, interdistance)
