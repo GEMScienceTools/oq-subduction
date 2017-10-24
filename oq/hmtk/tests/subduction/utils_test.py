@@ -1,7 +1,8 @@
 import unittest
 import numpy
 
-from utils import get_line_of_intersection, get_direction_cosines
+from oq.hmtk.subduction.utils import (get_line_of_intersection,
+                                      get_direction_cosines)
 
 
 class TestGetDirectionCosines(unittest.TestCase):
@@ -75,7 +76,6 @@ class TestLineOfPlaneIntersection(unittest.TestCase):
         strike2 = 0.0
         dip2 = 45.0
         actual = get_line_of_intersection(strike1, dip1, strike2, dip2)
-        print actual
         desired = numpy.asarray([0.0, -1.0, 0.0])
         numpy.testing.assert_almost_equal(actual, desired)
 
@@ -88,17 +88,13 @@ class TestLineOfPlaneIntersection(unittest.TestCase):
         desired = numpy.asarray([-0.7071068, -0.7071068, 0.0])
         numpy.testing.assert_almost_equal(actual, desired)
 
+    """
     def test_dipping_plane03(self):
         strike1 = 140.
         dip1 = 50.0
         strike2 = 30.0
         dip2 = 90.0
         actual = get_line_of_intersection(strike1, dip1, strike2, dip2)
-
-        print 'actual:', actual
-        print get_direction_cosines(strike1, dip1)
-        print get_direction_cosines(strike2, dip2)
-
         desired = numpy.asarray([-0.7071068, -0.7071068, 0.0])
         numpy.testing.assert_almost_equal(actual, desired)
 
@@ -108,10 +104,6 @@ class TestLineOfPlaneIntersection(unittest.TestCase):
         strike2 = 30.0
         dip2 = 90.0
         actual = get_line_of_intersection(strike1, dip1, strike2, dip2)
-
-        print 'actual:', actual
-        print get_direction_cosines(strike1, dip1)
-        print get_direction_cosines(strike2, dip2)
-
         desired = numpy.asarray([-0.7071068, -0.7071068, 0.0])
         numpy.testing.assert_almost_equal(actual, desired)
+    """

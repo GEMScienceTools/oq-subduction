@@ -2,14 +2,11 @@ import re
 import numpy
 from openquake.hazardlib.geo.line import Line
 from openquake.hazardlib.geo.point import Point
-from openquake.hazardlib.geo.geodetic import (min_geodetic_distance,
-                                              min_distance_to_segment,
+from openquake.hazardlib.geo.geodetic import (min_distance_to_segment,
                                               point_at, azimuth)
 
 from openquake.hmtk.seismicity.selector import CatalogueSelector
 from openquake.hmtk.parsers.catalogue.gcmt_ndk_parser import ParseNDKtoGCMT
-
-EARTH_RADIUS = 6000
 
 
 class CrossSectionData:
@@ -178,7 +175,7 @@ class CrossSectionData:
         for line in fin:
             vv = re.split('\s+', re.sub('^\s+', '', line))
             datav.append((float(vv[0]), float(vv[1])))
-        
+
         vulc = numpy.array(datav)
         minlo, maxlo, minla, maxla = self.csec.get_mm()
         idxv = self.csec.get_grd_nodes_within_buffer(vulc[:,0],
@@ -224,8 +221,11 @@ class Trench:
         naxis = rsmpl(self.axis[:, 0], self.axis[:, 1], distance)
         if len(self.axis) < 3:
             raise ValueError('Small array')
+        #
+        # compute azimuths
         az = numpy.zeros_like(self.axis[:, 0])
-        az[1:-1] = azimuth(self.axis[:-2, 0], self.axis[:-2, 1], self.axis[2:, 0], self.axis[2:, 1])
+        az[1:-1] = azimuth(self.axis[:-2, 0], self.axis[:-2, 1],
+                           self.axis[2:, 0], self.axis[2:, 1])
         az[0] = az[1]
         az[-1] = az[-2]
         return Trench(naxis, az)
@@ -241,8 +241,8 @@ class Trench:
         for idx, coo in enumerate(trch.axis.tolist()):
             if idx < len(trch.axis[:, 1]) - 1:
                     strike = azimuth(coo[0], coo[1],
-                                 trch.axis[idx + 1, 0],
-                                 trch.axis[idx + 1, 1])
+                                     trch.axis[idx + 1, 0],
+                                     trch.axis[idx + 1, 1])
                     yield CrossSection(coo[0],
                                        coo[1],
                                        [length],
@@ -254,28 +254,14 @@ class Trench:
 
 
 def rsmpl(ix, iy, samdst):
-    nx = []
-    ny = []
-    new = []
-    new.append([ix[0], iy[0]])
-    cnt = 1
-    while cnt < len(ix) - 2:
-        tmp = min_geodetic_distance(numpy.array([new[-1][0]]), numpy.array([new[-1][1]]), numpy.array([ix[cnt]]), numpy.array([iy[cnt]]))
-        cdst = tmp
-        while cdst < samdst and cnt < len(ix) - 2:
-            tmp = min_geodetic_distance(numpy.array([ix[cnt]]), numpy.array([iy[cnt]]), numpy.array([ix[cnt - 1]]), numpy.array([iy[cnt - 1]]))
-            cdst += tmp
-            cnt += 1
-
-        if cnt == len(ix) - 2:
-            new.append([ix[cnt], iy[cnt]])
-        else:
-            az = azimuth(ix[cnt], iy[cnt], ix[cnt - 1], iy[cnt - 1])
-            x, y = point_at(ix[cnt], iy[cnt], az, cdst - samdst)
-            new.append([x, y])
-        cdst = 0
-
-    return numpy.array(new)
+    """
+    """
+    #
+    # create line instance
+    trench = Line([Point(x, y) for x, y in zip(ix, iy)])
+    rtrench = trench.resample(samdst)
+    tmp = [[pnt.longitude, pnt.latitude] for pnt in rtrench.points]
+    return numpy.array(tmp)
 
 
 class CrossSection:
