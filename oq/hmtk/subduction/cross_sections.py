@@ -1,5 +1,8 @@
 import re
 import numpy
+
+from openquake.hazardlib.geo.geodetic import distance
+from openquake.hazardlib.geo.geodetic import npoints_towards
 from openquake.hazardlib.geo.line import Line
 from openquake.hazardlib.geo.point import Point
 from openquake.hazardlib.geo.geodetic import (min_distance_to_segment,
@@ -253,7 +256,7 @@ class Trench:
         return
 
 
-def rsmpl(ix, iy, samdst):
+def rsmpl_old(ix, iy, samdst):
     """
     """
     #
@@ -262,6 +265,79 @@ def rsmpl(ix, iy, samdst):
     rtrench = trench.resample(samdst)
     tmp = [[pnt.longitude, pnt.latitude] for pnt in rtrench.points]
     return numpy.array(tmp)
+
+
+def rsmpl(ix, iy, sampling_dist):
+    direct = 1
+    idx = 0
+    #
+    # create three lists: one with longitude, one with latitude and one with
+    # depth
+    lo = list(ix)
+    la = list(iy)
+    de = list(numpy.zeros_like(ix))
+    #
+    # initialise the variable used to store the cumulated distance
+    cdist = 0.
+    #
+    # initialise the list with the resampled nodes
+    resampled_cs = [[lo[idx], la[idx]]]
+    #
+    # set the starting point
+    slo = lo[idx]
+    sla = la[idx]
+    sde = de[idx]
+    #
+    # get the azimuth of the first segment on the edge in the given direction
+    azim = azimuth(lo[idx], la[idx], lo[idx+direct], la[idx+direct])
+    #
+    # resampling
+    while 1:
+        #
+        # this is a sanity check
+        assert idx <= len(lo)-1
+        #
+        # check loop exit condition
+        if direct > 0 and idx > len(lo)-1:
+            break
+        #
+        # compute the distance between the starting point and the next point
+        # on the profile
+        segment_len = distance(slo, sla, sde, lo[idx+direct], la[idx+direct],
+                               de[idx+direct])
+        #
+        # search for the point
+        if cdist+segment_len > sampling_dist:
+            #
+            # this is the lenght of the last segment-fraction needed to
+            # obtain the sampling distance
+            delta = sampling_dist - cdist
+            #
+            # add a new point to the cross section
+            pnts = npoints_towards(slo, sla, sde, azim, delta, 0., 2)
+            #
+            # update the starting point
+            slo = pnts[0][-1]
+            sla = pnts[1][-1]
+            sde = pnts[2][-1]
+            resampled_cs.append([slo, sla])
+            #
+            # reset the cumulative distance
+            cdist = 0.
+        else:
+            cdist += segment_len
+            idx += direct
+            slo = lo[idx]
+            sla = la[idx]
+            sde = de[idx]
+            #
+            # get the azimuth of the profile
+            if idx < len(lo)-1:
+                azim = azimuth(lo[idx], la[idx],
+                               lo[idx+direct], la[idx+direct])
+            else:
+                break
+    return numpy.array(resampled_cs)
 
 
 class CrossSection:
@@ -299,37 +375,13 @@ class CrossSection:
         lamax = max(self.pla)
         return lomin, lomax, lamin, lamax
 
-    def _set_vertexes_old(self):
+    def _set_vertexes(self):
         self.plo.append(self.olo)
         self.pla.append(self.ola)
         for lngh, strk in zip(self.length, self.strike):
             tlo, tla = point_at(self.plo[-1], self.pla[-1], strk, lngh)
             self.plo.append(tlo)
             self.pla.append(tla)
-
-    def _set_vertexes_old(self):
-        p = Proj('+proj=lcc +lon_0={:f}'.format(self.olo)
-        self.plo.append(self.olo)
-        self.pla.append(self.ola)
-        x, y = p(lld[:, 0], lld[:, 1])
-        x = x / 1e3  # m -> km
-        y = y / 1e3  # m -> km
-        for lngh, strk in zip(self.length, self.strike):
-
-
-
-
-
-
-
-        self.plo.append(self.olo)
-        self.pla.append(self.ola)
-        for lngh, strk in zip(self.length, self.strike):
-            tlo, tla = point_at(self.plo[-1], self.pla[-1], strk, lngh)
-            self.plo.append(tlo)
-            self.pla.append(tla)
-
-
 
     def get_eqks_within_buffer(self, catalogue, buffer_distance):
         """
@@ -339,8 +391,8 @@ class CrossSection:
             Horizontal buffer_distance used to select earthquakes included in
             the catalogue [in km]
         """
-        line = Line([ Point(lo, la) for lo, la in zip(self.plo, self.pla) ])
-        coo = [ (lo, la) for lo, la in zip(catalogue.data['longitude'],
+        line = Line([Point(lo, la) for lo, la in zip(self.plo, self.pla)])
+        coo = [(lo, la) for lo, la in zip(catalogue.data['longitude'],
                                            catalogue.data['latitude'])
               ]
         dst = get_min_distance(line, numpy.array(coo))
