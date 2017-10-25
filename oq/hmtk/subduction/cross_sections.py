@@ -299,13 +299,37 @@ class CrossSection:
         lamax = max(self.pla)
         return lomin, lomax, lamin, lamax
 
-    def _set_vertexes(self):
+    def _set_vertexes_old(self):
         self.plo.append(self.olo)
         self.pla.append(self.ola)
         for lngh, strk in zip(self.length, self.strike):
             tlo, tla = point_at(self.plo[-1], self.pla[-1], strk, lngh)
             self.plo.append(tlo)
             self.pla.append(tla)
+
+    def _set_vertexes_old(self):
+        p = Proj('+proj=lcc +lon_0={:f}'.format(self.olo)
+        self.plo.append(self.olo)
+        self.pla.append(self.ola)
+        x, y = p(lld[:, 0], lld[:, 1])
+        x = x / 1e3  # m -> km
+        y = y / 1e3  # m -> km
+        for lngh, strk in zip(self.length, self.strike):
+
+
+
+
+
+
+
+        self.plo.append(self.olo)
+        self.pla.append(self.ola)
+        for lngh, strk in zip(self.length, self.strike):
+            tlo, tla = point_at(self.plo[-1], self.pla[-1], strk, lngh)
+            self.plo.append(tlo)
+            self.pla.append(tla)
+
+
 
     def get_eqks_within_buffer(self, catalogue, buffer_distance):
         """
