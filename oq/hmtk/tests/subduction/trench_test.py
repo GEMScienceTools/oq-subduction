@@ -34,7 +34,7 @@ class TrenchDiscretizationTest(unittest.TestCase):
 
     def test_resampling_01(self):
         """
-        Test resampling of the trench axis using a sampling distance of 20 km
+        Test trench axis resampling using a distance of 20 km
         """
         #
         # resample the trench axis - output is a numpy array
@@ -51,4 +51,4 @@ class TrenchDiscretizationTest(unittest.TestCase):
         #
         # check that the spacing between points corresponds to the
         # sampling distance
-        np.testing.assert_allclose(dsts, expected, rtol=2, atol=0.)
+        np.testing.assert_allclose(dsts, expected, rtol=1, atol=0.)
