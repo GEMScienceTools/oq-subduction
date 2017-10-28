@@ -1,16 +1,55 @@
 
 import os
+import glob
 import numpy as np
 import unittest
+import shutil
+import tempfile
 
 from oq.hmtk.subduction.create_2pt5_model import (read_profiles_csv,
                                                   get_profiles_length,
+                                                  write_profiles_csv,
+                                                  write_edges_csv,
                                                   get_interpolated_profiles)
 
 from openquake.hazardlib.geo.geodetic import distance
 
 
 BASE_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data/cs')
+
+
+class WriteProfilesEdgesTest(unittest.TestCase):
+
+    def setUp(self):
+        # Create a temporary directory
+        self.test_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        # Remove the directory after the test
+        shutil.rmtree(self.test_dir)
+
+    def test_write_profiles_edges(self):
+        #
+        # read data and compute distances
+        sps, dmin, dmax = read_profiles_csv(BASE_DATA_PATH)
+        lengths, longest_key, shortest_key = get_profiles_length(sps)
+        maximum_sampling_distance = 15
+        num_sampl = np.ceil(lengths[longest_key] / maximum_sampling_distance)
+        ssps = get_interpolated_profiles(sps, lengths, num_sampl)
+        write_profiles_csv(ssps, self.test_dir)
+        write_edges_csv(ssps, self.test_dir)
+        #
+        #
+        tmp = []
+        for fname in glob.glob(os.path.join(self.test_dir, 'cs*')):
+            tmp.append(fname)
+        self.assertEqual(len(tmp), 2)
+        #
+        #
+        tmp = []
+        for fname in glob.glob(os.path.join(self.test_dir, 'edge*')):
+            tmp.append(fname)
+        self.assertEqual(len(tmp), 7)
 
 
 class ReadProfilesTest(unittest.TestCase):
@@ -62,13 +101,29 @@ class GetInterpolatedProfilesTest(unittest.TestCase):
         # read data and compute distances
         sps, dmin, dmax = read_profiles_csv(BASE_DATA_PATH)
         lengths, longest_key, shortest_key = get_profiles_length(sps)
-        maximum_sampling_distance = 15
+        maximum_sampling_distance = 30
         num_sampl = np.ceil(lengths[longest_key] / maximum_sampling_distance)
-
+        #
+        # get interpolated profiles
         ssps = get_interpolated_profiles(sps, lengths, num_sampl)
+        lll = []
         for key in ssps.keys():
+            odat = sps[key]
             dat = ssps[key]
             distances = distance(dat[0:-2, 0], dat[0:-2, 1], dat[0:-2, 2],
                                  dat[1:-1, 0], dat[1:-1, 1], dat[1:-1, 2])
             expected = lengths[key] / num_sampl * np.ones_like(distances)
-            np.testing.assert_allclose(distances, expected, rtol=2)
+            np.testing.assert_allclose(distances, expected, rtol=3)
+            #
+            # update the list with the number of points in each profile
+            lll.append(len(dat[:, 0]))
+            #
+            # check that the interpolated profile starts from the same point
+            # of the original one
+            self.assertListEqual([odat[0, 0], odat[0, 1]],
+                                 [dat[0, 0], dat[0, 1]])
+        #
+        # check that all the profiels have the same length
+        dff = np.diff(np.array(lll))
+        zeros = np.zeros_like(dff)
+        np.testing.assert_allclose(dff, zeros, rtol=2)
