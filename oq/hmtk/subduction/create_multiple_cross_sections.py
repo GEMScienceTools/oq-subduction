@@ -29,14 +29,14 @@ def get_cs(trench, ini_filename, cs_len, cs_depth, interdistance):
     """
     #
     # Plot the traces of cross-sections
-    ts = trench.resample(interdistance)
     fou = open('cs_traces.cs', 'w')
 
     cs_dict = {}
-    for idx, cs in enumerate(ts.iterate_cross_sections(interdistance,
+    for idx, cs in enumerate(trench.iterate_cross_sections(interdistance,
                                                            cs_len)):
         if cs is not None:
             cs_dict['%s' % idx] = cs
+            cs.plo[:] = ([x-360 if x>180 else x for x in cs.plo[:]])
             tmps = '%f %f %f %f %f %d %s\n' % (cs.plo[0],
                                             cs.pla[0],
                                             cs_depth,

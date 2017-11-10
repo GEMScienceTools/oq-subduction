@@ -27,16 +27,16 @@ from openquake.hazardlib.geo.geodetic import point_at
 MAX_DEPTH = 350
 YPAD = 10
 MAX_DIST = 1000
-fig_length = 12
+fig_length = 10
 
 
-KAVERINA = {'N' : 'blue',
-            'SS' : 'green',
+KAVERINA = {'N': 'blue',
+            'SS': 'green',
             'R': 'red',
             'N-SS': 'turquoise',
             'SS-N': 'palegreen',
             'R-SS': 'goldenrod',
-            'SS-R': 'yellow' }
+            'SS-R': 'yellow'}
 
 def onclick(event):
     print('button=%d, x=%d, y=%d, xdata=%f, ydata=%f' %
@@ -45,7 +45,7 @@ def onclick(event):
 def _plot_h_eqk_histogram(axes, csda, dep_max=[], dis_max=[]):
     """
     """
-    if csda.ecat is None or csda.gcmt is None:
+    if csda.ecat is None:
         return
 
     plt.sca(axes)
@@ -61,30 +61,32 @@ def _plot_h_eqk_histogram(axes, csda, dep_max=[], dis_max=[]):
     tmp_mag = newcat.data['magnitude'][:]
     tmp_dep = newcat.data['depth'][:]
 
-    cat_gcmt = csda.gcmt
-    cmt_dst = geodetic_distance(olo,
-                                ola,
-                                cat_gcmt.data['longitude'],
-                                cat_gcmt.data['latitude'])
-
     numpy.seterr(invalid='ignore')
     iii = numpy.nonzero((tmp_mag > 3.5) & (tmp_dep > 0.))
 
     if dep_max and dis_max:
-       edges_dep = numpy.arange(0, dep_max, 5)
-       edges_dist = numpy.arange(0, dis_max, 5)
+        edges_dep = numpy.arange(0, dep_max, 5)
+        edges_dist = numpy.arange(0, dis_max, 5)
     else:
-       edges_dep = numpy.arange(0, MAX_DEPTH, 5)
-       edges_dist = numpy.arange(0, MAX_DIST, 5)
+        edges_dep = numpy.arange(0, MAX_DEPTH, 5)
+        edges_dist = numpy.arange(0, MAX_DIST, 5)
 
     seism_depth_hist = scipy.histogram(tmp_dep[iii], edges_dep)
     seism_dist_hist = scipy.histogram(dsts[iii], edges_dist)
-    gcmt_dist_hist = scipy.histogram(cmt_dst, edges_dist)
+    
 
     plt.bar(edges_dist[:-1], height=seism_dist_hist[0],
-            width=numpy.diff(edges_dist)[0], fc='none', ec='blue')
-    plt.bar(edges_dist[:-1], height=gcmt_dist_hist[0],
-            width=numpy.diff(edges_dist)[0], fc='red', alpha=0.4)
+            width=numpy.diff(edges_dist)[0], ec='blue')
+    
+    if csda.gcmt is not None:
+        cat_gcmt = csda.gcmt
+        cmt_dst = geodetic_distance(olo,
+                                    ola,
+                                    cat_gcmt.data['longitude'],
+                                    cat_gcmt.data['latitude'])
+        gcmt_dist_hist = scipy.histogram(cmt_dst, edges_dist)
+        plt.bar(edges_dist[:-1], height=gcmt_dist_hist[0],
+                width=numpy.diff(edges_dist)[0], fc='red', alpha=0.4)
 
     xmax = numpy.ceil(max(seism_depth_hist[0])/10.)*10.
 
@@ -101,9 +103,9 @@ def _plot_h_eqk_histogram(axes, csda, dep_max=[], dis_max=[]):
 
     # Limits no fixed
     if dis_max:
-       axes.set_xlim([0, dis_max])
+        axes.set_xlim([0, dis_max])
     else:
-       axes.set_xlim([0, MAX_DIST])
+        axes.set_xlim([0, MAX_DIST])
 
 
 def _plot_v_eqk_histogram(axes, csda, dep_max=[], dis_max=[]):
@@ -118,27 +120,35 @@ def _plot_v_eqk_histogram(axes, csda, dep_max=[], dis_max=[]):
 
 
     if dep_max and dis_max:
-       edges_dep = numpy.arange(0, dep_max, 5)
-       edges_dist = numpy.arange(0, dis_max, 5)
+        edges_dep = numpy.arange(0, dep_max, 5)
+#        edges_dist = numpy.arange(0, dis_max, 5)
     else:
-       edges_dep = numpy.arange(0, MAX_DEPTH, 5)
-       edges_dist = numpy.arange(0, MAX_DIST, 5)
+        edges_dep = numpy.arange(0, MAX_DEPTH, 5)
+#        edges_dist = numpy.arange(0, MAX_DIST, 5)
 
     seism_depth_hist = scipy.histogram(tmp_dep[iii], edges_dep)
 
     plt.barh(edges_dep[:-1], seism_depth_hist[0],
-             height=numpy.diff(edges_dep)[0], fc='none', ec='blue')
+             height=numpy.diff(edges_dep)[0], ec='blue')
     plt.ylabel('Depth [km]')
+
+    if csda.gcmt is not None:
+        cat_gcmt = csda.gcmt
+        tmp_dep = cat_gcmt.data['depth'][:]
+        gcmt_dep_hist = scipy.histogram(tmp_dep, edges_dep)
+
+        plt.barh(edges_dep[:-1], gcmt_dep_hist[0]-1,
+                height=numpy.diff(edges_dep)[0]-1,fc='red' )
 
     xmax = numpy.ceil(max(seism_depth_hist[0])/10.)*10.
     axes.grid(which='both', zorder=20)
     axes.set_xlim([0, xmax+xmax*0.05])
     if dep_max:
-       axes.set_ylim([dep_max, -YPAD])
-       axes.set_ybound(lower=dep_max, upper=-YPAD)
+        axes.set_ylim([dep_max, -YPAD])
+        axes.set_ybound(lower=dep_max, upper=-YPAD)
     else:
-       axes.set_ylim([MAX_DEPTH, -YPAD])
-       axes.set_ybound(lower=MAX_DEPTH, upper=-YPAD)
+        axes.set_ylim([MAX_DEPTH, -YPAD])
+        axes.set_ybound(lower=MAX_DEPTH, upper=-YPAD)
 
     axes.invert_xaxis()
 
@@ -172,7 +182,7 @@ def _plot_np_intersection(axes, csda):
 
     cat_gcmt = csda.gcmt
     cmt_dst = geodetic_distance(olo, ola, cat_gcmt.data['longitude'],
-                                      cat_gcmt.data['latitude'])
+                                cat_gcmt.data['latitude'])
     cmt_dep = cat_gcmt.data['depth']
     cmts = numpy.array(cat_gcmt.gcmts)
 
@@ -220,7 +230,7 @@ def _plot_focal_mech(axes, csda):
 
     cat_gcmt = csda.gcmt
     cmt_dst = geodetic_distance(olo, ola, cat_gcmt.data['longitude'],
-                                      cat_gcmt.data['latitude'])
+                                cat_gcmt.data['latitude'])
     cmt_dep = cat_gcmt.data['depth']
     cmts = numpy.array(cat_gcmt.gcmts)
 
@@ -258,11 +268,14 @@ def _plot_moho(axes, csda):
     :parameter csda:
     """
     if csda.moho is None:
+        print("No CRUST1.0...")
         return
     plt.sca(axes)
     olo = csda.csec.olo
     ola = csda.csec.ola
     moho = csda.moho
+    if moho.size==3:
+       moho = numpy.concatenate((moho,moho),axis=0).reshape((2,3)) 
     mdsts = geodetic_distance(olo, ola, moho[:, 0], moho[:, 1])
     iii = numpy.argsort(mdsts)
     plt.plot(mdsts[iii], moho[iii, 2], '--p', zorder=100, linewidth=2)
@@ -274,12 +287,14 @@ def _plot_litho(axes, csda):
     :parameter csda:
     """
     if csda.litho is None:
-        print("No hay LITHO1.0...")
+        print("No LITHO1.0...")
         return
     plt.sca(axes)
     olo = csda.csec.olo
     ola = csda.csec.ola
     litho = csda.litho
+    if litho.size==3:
+       litho = numpy.concatenate((litho,litho),axis=0).reshape((2,3)) 
     lists = geodetic_distance(olo, ola, litho[:, 0], litho[:, 1])
     lll = numpy.argsort(lists)
     plt.plot(lists[lll], litho[lll, 2], '-.', zorder=100, linewidth=2)
@@ -299,7 +314,8 @@ def _plot_topo(axes, csda):
     topo = csda.topo
     tbsts = geodetic_distance(olo, ola, topo[:, 0], topo[:, 1])
     jjj = numpy.argsort(tbsts)
-    plt.plot(tbsts[jjj], ((-1*topo[jjj, 2])/1000.), '-g', zorder=100, linewidth=2)
+    plt.plot(tbsts[jjj], ((-1*topo[jjj, 2])/1000.), '-g', zorder=100,
+             linewidth=2)
 
 
 def _plot_volc(axes, csda):
@@ -316,16 +332,16 @@ def _plot_volc(axes, csda):
 
     if (len(csda.volc)-1) >= 1:
         vuls = geodetic_distance(olo, ola,
-                              csda.volc[:, 0],
-                              csda.volc[:, 1])
+                                 csda.volc[:, 0],
+                                 csda.volc[:, 1])
         for v in vuls:
             square = Rectangle((v, -10.0), 7, 12)
             patches.append(square)
 
     else:
         vuls = geodetic_distance(olo, ola,
-                              csda.volc[0],
-                              csda.volc[1])
+                                 csda.volc[0],
+                                 csda.volc[1])
         square = Rectangle((vuls, -10.0), 7, 12)
         patches.append(square)
 
@@ -398,11 +414,11 @@ def _print_info(axes, csec, depp):
     plt.sca(axes)
     note = 'Cross-Section origin: %.2f %.2f' % (csec.olo, csec.ola)
     axes.annotate(note, xy=(0.0, depp+20), xycoords='data',
-                     annotation_clip=False, fontsize=8)
+                  annotation_clip=False, fontsize=8)
 
     note = 'Cross-Section strike: %.1f [degree]' % (csec.strike[0])
     axes.annotate(note, xy=(0.0, depp+30), xycoords='data',
-                   annotation_clip=False, fontsize=8)
+                  annotation_clip=False, fontsize=8)
 
     note = 'Cross-Section lenght: %.1f [km]' % (csec.length[0])
     plt.gca().annotate(note, xy=(0.0, depp+40), xycoords='data',
@@ -418,7 +434,7 @@ def plot(csda, depp, lnght):
     fig = plt.figure(figsize=(fig_length, fig_width))
 
     #fig = plt.figure(figsize=(15,9))
-    gs = gridspec.GridSpec(2, 2, width_ratios=[1,5], height_ratios=[1,5])
+    gs = gridspec.GridSpec(2, 2, width_ratios=[1, 5], height_ratios=[1, 5])
     #
     ax0 = plt.subplot(gs[0])
     plt.axis('off')
@@ -428,23 +444,21 @@ def plot(csda, depp, lnght):
     #ax3.set_xticklabels([])
     #ax3.set_yticklabels([])
 
-    _print_info(plt.subplot(gs[3]), csda.csec,depp)
-    _print_legend(plt.subplot(gs[3]),depp,lnght)
-
+    _print_info(plt.subplot(gs[3]), csda.csec, depp)
+    _print_legend(plt.subplot(gs[3]), depp, lnght)
 
     # Plotting
     _plot_eqks(plt.subplot(gs[3]), csda)
     _plot_moho(plt.subplot(gs[3]), csda)
     _plot_litho(plt.subplot(gs[3]), csda)
     _plot_topo(plt.subplot(gs[3]), csda)
-    #_plot_volc(plt.subplot(gs[3]), csda)
+    _plot_volc(plt.subplot(gs[3]), csda)
 
     _plot_focal_mech(plt.subplot(gs[3]), csda)
     _plot_slab1pt0(plt.subplot(gs[3]), csda)
     _plot_np_intersection(plt.subplot(gs[3]), csda)
-    _plot_h_eqk_histogram(plt.subplot(gs[1]), csda,depp,lnght)
-    _plot_v_eqk_histogram(plt.subplot(gs[2]), csda,depp,lnght)
-
+    _plot_h_eqk_histogram(plt.subplot(gs[1]), csda, depp, lnght)
+    _plot_v_eqk_histogram(plt.subplot(gs[2]), csda, depp, lnght)
 
     # Main panel
     ax3 = plt.subplot(gs[3])
@@ -486,7 +500,7 @@ class LineBuilder:
 
         if isinstance(event, KeyEvent):
             if event.key is 'd':
-                print ('----------------------')
+                print('----------------------')
                 self.xs = []
                 self.ys = []
                 self.xp = []
@@ -499,7 +513,7 @@ class LineBuilder:
                 dat = numpy.array(self.data)
                 fname = './cs_%s.csv' % (self.csec.ids)
                 numpy.savetxt(fname, dat)
-                print ('Section data saved to: %s' % (fname))
+                print('Section data saved to: %s' % (fname))
             else:
                 pass
 
@@ -512,9 +526,11 @@ class LineBuilder:
                 nlo, nla = point_at(olo, ola, strike, event.xdata)
 
                 cnt = len(self.xs)+1
-                print('%03d, %+7.4f, %+7.4f, %6.2f' % (cnt, nlo, nla, event.ydata))
+                print('%03d, %+7.4f, %+7.4f, %6.2f' % (cnt, nlo, nla,
+                                                       event.ydata))
 
-                if event.inaxes!=self.line.axes: return
+                if event.inaxes != self.line.axes:
+                    return
 
                 self.xp.append(event.xdata)
                 self.yp.append(event.ydata)
@@ -555,7 +571,7 @@ def plt_cs(olo, ola, depp, lnght, strike, ids, ini_filename):
     csda.set_litho_moho_depth(fname_litho)
     csda.set_volcano(fname_volc)
 
-    fig = plot(csda,depp,lnght)
+    fig = plot(csda, depp, lnght)
 
     return fig
 
@@ -570,7 +586,7 @@ def main(argv):
     ids = argv[5]
     ini_filename = argv[6]
 
-    print ('Working on cross section: %s' % (ids))
+    print('Working on cross section: %s' % (ids))
     fig = plt_cs(olo, ola, depp, lnght, strike, ids, ini_filename)
     plt.show()
 
