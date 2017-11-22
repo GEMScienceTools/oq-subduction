@@ -78,6 +78,7 @@ def plot_sub_profiles(foldername):
 
     return ax, (minlo, maxlo, minla, maxla, minde, maxde)
 
+
 def main(argv):
     """
     argv[0] - Folder containing the cross-section profiles and the edges
@@ -85,7 +86,6 @@ def main(argv):
     """
     foldername = argv[0]
     axes, lims = plot_sub_profiles(foldername)
-    print (lims)
 
     if len(argv) > 1:
         config = configparser.ConfigParser()
