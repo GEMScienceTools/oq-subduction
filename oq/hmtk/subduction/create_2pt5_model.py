@@ -49,6 +49,8 @@ def get_interpolated_profiles(sps, lengths, number_of_samples):
         A dictionary containing the subduction profiles lengths
     :parameter float number_of_samples:
         Number of subsegments to be created
+    :returns:
+        A dictionary
     """
     ssps = {}
     for key in sorted(sps.keys()):
@@ -105,7 +107,8 @@ def get_interpolated_profiles(sps, lengths, number_of_samples):
                                  (y[idx] + hdst*yfact)*1e3, inverse=True)
                     spro.append([tlo, tla, dat[idx, 2]+vdst])
                     #
-                    # check distance with the previous point
+                    # check distance with the previous point and depths Vs
+                    # previous points
                     if i > 0:
                         check = distance(tlo, tla, dat[idx, 2]+vdst,
                                          spro[-2][0], spro[-2][1], spro[-2][2])
@@ -114,6 +117,11 @@ def get_interpolated_profiles(sps, lengths, number_of_samples):
                             msg += ' is incorrect: {:.3f} {:.3f}'.format(check,
                                                                          samp)
                             raise ValueError(msg)
+                        # new depth larger than previous
+                        if numpy.any(numpy.array(spro)[:-1, 2] > spro[-1][2]):
+                            print(spro)
+                            raise ValueError('')
+
                 #
                 # new distance left over
                 cdst = (dst + cdst) - num_new_points * samp
@@ -171,8 +179,10 @@ def read_profiles_csv(foldername, upper_depth=0, lower_depth=1000,
 def write_profiles_csv(sps, foldername):
     """
     :parameter dic sps:
+        A dictionary with the sampled profiles
     :parameter str foldername:
-        The name of the file which contains the interpolated profiles
+        The name of the folder where we write the files with the interpolated
+        profiles
     """
     if not os.path.exists(foldername):
         os.mkdir(foldername)

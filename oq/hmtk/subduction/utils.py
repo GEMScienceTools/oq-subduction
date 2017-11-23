@@ -199,7 +199,7 @@ def _read_edges(foldername):
     """
     path = os.path.join(foldername, 'edge*.*')
     tedges = []
-    for fle in glob.glob(path):
+    for fle in sorted(glob.glob(path)):
         tedges.append(_read_edge_file(fle))
     return tedges
 
@@ -210,7 +210,7 @@ def _get_array(tedges):
         A list of :class:`openquake.hazardlib.geo.line.Line` instances
     :return:
     """
-    edges = np.zeros( (len(tedges), len(tedges[0]), 3) )
+    edges = np.zeros((len(tedges), len(tedges[0]), 3))
     for i, edge in enumerate(tedges):
         coo = [(edge.points[i].longitude,
                 edge.points[i].latitude,
