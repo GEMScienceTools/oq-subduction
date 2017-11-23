@@ -1,8 +1,62 @@
-import unittest
+"""
+"""
+
+import os
 import numpy
+import unittest
+
+from openquake.hazardlib.geo import Line, Point
 
 from oq.hmtk.subduction.utils import (get_line_of_intersection,
-                                      get_direction_cosines)
+                                      get_direction_cosines,
+                                      build_complex_surface_from_edges,
+                                      _check_edges)
+
+EDGE_FOLDER = os.path.join(os.path.dirname(__file__), 'data/edges')
+
+
+class TestBuildComplexFaultSurface(unittest.TestCase):
+
+    def test_build_surface_01(self):
+        """
+        """
+        srfc = build_complex_surface_from_edges(EDGE_FOLDER)
+
+
+class TestCheckEdges(unittest.TestCase):
+
+    def setUp(self):
+        edges = []
+        edge1 = Line([Point(10.0, 45.0, 0.0), Point(10., 45.1, 0.0),
+                      Point(10.0, 45.2, 0.0)])
+        edge2 = Line([Point(10.1, 45.0, 10.0), Point(10.1, 45.1, 10.0),
+                      Point(10.1, 45.2, 10.0)])
+        edges.append(edge1)
+        edges.append(edge2)
+        self.edgesA = edges
+
+        edges = []
+        edge1 = Line([Point(10.0, 45.0, 0.0), Point(10., 45.1, 0.0),
+                      Point(10.0, 45.2, 0.0)])
+        edge2 = Line([Point(10.1, 45.2, 10.0), Point(10.1, 45.1, 10.0),
+                      Point(10.1, 45.0, 10.0)])
+        edges.append(edge1)
+        edges.append(edge2)
+        self.edgesB = edges
+
+    def test_check_01(self):
+        """
+        """
+        computed = _check_edges(self.edgesA)
+        expected = [1, 1]
+        numpy.testing.assert_allclose(computed, expected, rtol=1e-07)
+
+    def test_check_02(self):
+        """
+        """
+        computed = _check_edges(self.edgesB)
+        expected = [1, -1]
+        numpy.testing.assert_allclose(computed, expected, rtol=1e-07)
 
 
 class TestGetDirectionCosines(unittest.TestCase):
