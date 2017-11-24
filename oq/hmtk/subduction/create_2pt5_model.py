@@ -5,6 +5,7 @@ import re
 import sys
 import glob
 import numpy
+import code
 
 from pyproj import Proj
 from openquake.hazardlib.geo.geodetic import distance, point_at, azimuth
@@ -37,6 +38,7 @@ def get_profiles_length(sps):
         if shortest_length > total_length:
             shortest_length = total_length
             shortest_key = key
+    #code.interact(local=locals())
     return lengths, longest_key, shortest_key
 
 
@@ -62,15 +64,16 @@ def get_interpolated_profiles(sps, lengths, number_of_samples):
         dat = sps[key]
         #
         # projecting profile coordinates
-        p = Proj('+proj=lcc +lon_0={:f}'.format(dat[0, 0]))
-        x, y = p(dat[:, 0], dat[:, 1])
-        x = x / 1e3  # m -> km
-        y = y / 1e3  # m -> km
+	#old way
+#        p = Proj('+proj=lcc +lon_0={:f}'.format(dat[0, 0]))
+#        x, y = p(dat[:, 0], dat[:, 1])
+#        x = x / 1e3  # m -> km
+#        y = y / 1e3  # m -> km
         #
         # horizontal 'slope'
-        hslope = numpy.arctan((y[-1]-y[0]) / (x[-1]-x[0]))
-        xfact = numpy.cos(hslope)
-        yfact = numpy.sin(hslope)
+ #       hslope = numpy.arctan((y[-1]-y[0]) / (x[-1]-x[0]))
+ #       xfact = numpy.cos(hslope)
+ #       yfact = numpy.sin(hslope)
         #
         # initialise
         idx = 0
@@ -81,8 +84,8 @@ def get_interpolated_profiles(sps, lengths, number_of_samples):
         while idx < len(dat)-1:
             #
             # segment length
-            dst = ((x[idx] - x[idx+1])**2 + (y[idx] - y[idx+1])**2 +
-                   (dat[idx, 2] - dat[idx+1, 2])**2)**.5
+            dst = distance(dat[idx,0],dat[idx,1],dat[idx,2],dat[idx+1,0],dat[idx+1,1],dat[idx+1,2])
+            azim = azimuth(dat[idx,0],dat[idx,1],dat[idx+1,0],dat[idx+1,1])
             #
             # calculate total distance i.e. cumulated + new segment
             total_dst = cdst + dst
@@ -103,8 +106,7 @@ def get_interpolated_profiles(sps, lengths, number_of_samples):
                     tdst = (i+1) * samp - cdst
                     hdst = tdst * hfact
                     vdst = tdst * vfact
-                    tlo, tla = p((x[idx] + hdst*xfact)*1e3,
-                                 (y[idx] + hdst*yfact)*1e3, inverse=True)
+                    tlo,tla = point_at(dat[idx,0],dat[idx,1],azim,hdst)
                     spro.append([tlo, tla, dat[idx, 2]+vdst])
                     #
                     # check distance with the previous point and depths Vs
@@ -249,8 +251,8 @@ def main(argv):
     #
     # Compute lengths
     lengths, longest_key, shortest_key = get_profiles_length(sps)
-    number_of_samples = numpy.ceil(lengths[longest_key] /
-                                   maximum_sampling_distance)
+    code.interact(local=locals())
+    number_of_samples = numpy.ceil(lengths[longest_key]/maximum_sampling_distance)
     print('Number of subsegments:', number_of_samples)
     tmp = lengths[shortest_key]/number_of_samples
     print('Shortest sampling [%s]: %.4f' % (shortest_key, tmp))
