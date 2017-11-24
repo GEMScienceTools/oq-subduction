@@ -1,11 +1,11 @@
 #!/usr/bin/env python
+
 import os
 import re
 import sys
 import glob
 import numpy
 
-from pyproj import Proj
 from openquake.hazardlib.geo.geodetic import distance, point_at, azimuth
 
 
@@ -48,86 +48,8 @@ def get_interpolated_profiles(sps, lengths, number_of_samples):
         A dictionary containing the subduction profiles lengths
     :parameter float number_of_samples:
         Number of subsegments to be created
-    """
-    ssps = {}
-    for key in sorted(sps.keys()):
-        #
-        # calculate the sampling distance
-        samp = lengths[key] / number_of_samples
-        #print (samp)
-        #
-        # set data for the profile
-        dat = sps[key]
-        #
-        # initialise
-        idx = 0
-        cdst = 0
-        spro = [[dat[0, 0], dat[0, 1], dat[0, 2]]]
-        #
-        # process the segments composing the profile
-        while idx < len(dat)-1:
-            #
-            # segment length and azimuth
-            dst = distance(dat[idx,0],dat[idx,1],dat[idx,2],dat[idx+1,0],dat[idx+1,1],dat[idx+1,2])
-            azim = azimuth(dat[idx,0],dat[idx,1],dat[idx+1,0],dat[idx+1,1])
-            #
-            # calculate total distance i.e. cumulated + new segment
-            total_dst = cdst + dst
-            #
-            # number of new points
-            num_new_points = int(numpy.floor(total_dst/samp))
-            #
-            # take samples if possible
-            if num_new_points > 0:
-                #print ('new points!',num_new_points)
-                #
-                # segment dip angle 
-                dipr = numpy.arcsin((dat[idx+1, 2]-dat[idx, 2])/dst)
-                hfact = numpy.cos(dipr)
-                vfact = numpy.sin(dipr)
-                #
-                for i in range(0, num_new_points):
-                    tdst = (i+1) * samp - cdst
-                    hdst = tdst * hfact
-                    tlo,tla = point_at(dat[idx,0],dat[idx,1],azim,hdst)
-                    vdst = tdst * vfact
-                    spro.append([tlo, tla, dat[idx, 2]+vdst])
-                    #
-                    # check distance with the previous point
-                    if i > 0:
-                        check = distance(tlo, tla, dat[idx, 2]+vdst,
-                                         spro[-2][0], spro[-2][1], spro[-2][2])
-                        if abs(check - samp) > samp*0.15:
-                            msg = 'Distance between consecutive points'
-                            msg += ' is incorrect: {:.3f} {:.3f}'.format(check,
-                                                                         samp)
-                            raise ValueError(msg)
-                #
-                # new distance left over
-                cdst = (dst + cdst) - num_new_points * samp
-            else:
-                cdst += dst
-            #
-            # updating index
-            idx += 1
-        #
-        # Saving results
-        if len(spro):
-            ssps[key] = numpy.array(spro)
-        else:
-            print('length = 0')
-    return ssps
-
-
-def get_interpolated_profiles_old(sps, lengths, number_of_samples):
-    """
-    :parameter dict sps:
-        A dictionary containing the subduction profiles key is a string and
-        value is an instance of :class:`numpy.ndarray`
-    :parameter dict lengths:
-        A dictionary containing the subduction profiles lengths
-    :parameter float number_of_samples:
-        Number of subsegments to be created
+    :returns:
+        A dictionary
     """
     ssps = {}
     for key in sorted(sps.keys()):
@@ -139,16 +61,16 @@ def get_interpolated_profiles_old(sps, lengths, number_of_samples):
         dat = sps[key]
         #
         # projecting profile coordinates
-        p = Proj('+proj=lcc +lon_0={:f}'.format(dat[0, 0]))
-        x, y = p(dat[:, 0], dat[:, 1])
-        x = x / 1e3  # m -> km
-        y = y / 1e3  # m -> km
-
+	#old way
+#        p = Proj('+proj=lcc +lon_0={:f}'.format(dat[0, 0]))
+#        x, y = p(dat[:, 0], dat[:, 1])
+#        x = x / 1e3  # m -> km
+#        y = y / 1e3  # m -> km
         #
         # horizontal 'slope'
-        hslope = numpy.arctan((y[-1]-y[0]) / (x[-1]-x[0]))
-        xfact = numpy.cos(hslope)
-        yfact = numpy.sin(hslope)
+ #       hslope = numpy.arctan((y[-1]-y[0]) / (x[-1]-x[0]))
+ #       xfact = numpy.cos(hslope)
+ #       yfact = numpy.sin(hslope)
         #
         # initialise
         idx = 0
@@ -159,8 +81,8 @@ def get_interpolated_profiles_old(sps, lengths, number_of_samples):
         while idx < len(dat)-1:
             #
             # segment length
-            dst = ((x[idx] - x[idx+1])**2 + (y[idx] - y[idx+1])**2 +
-                   (dat[idx, 2] - dat[idx+1, 2])**2)**.5
+            dst = distance(dat[idx,0],dat[idx,1],dat[idx,2],dat[idx+1,0],dat[idx+1,1],dat[idx+1,2])
+            azim = azimuth(dat[idx,0],dat[idx,1],dat[idx+1,0],dat[idx+1,1])
             #
             # calculate total distance i.e. cumulated + new segment
             total_dst = cdst + dst
@@ -175,17 +97,17 @@ def get_interpolated_profiles_old(sps, lengths, number_of_samples):
                 dipr = numpy.arcsin((dat[idx+1, 2]-dat[idx, 2])/dst)
                 hfact = numpy.cos(dipr)
                 vfact = numpy.sin(dipr)
-                ##
+                #
                 #
                 for i in range(0, num_new_points):
                     tdst = (i+1) * samp - cdst
                     hdst = tdst * hfact
                     vdst = tdst * vfact
-                    tlo, tla = p((x[idx] + hdst*xfact)*1e3,
-                                 (y[idx] + hdst*yfact)*1e3, inverse=True)
+                    tlo,tla = point_at(dat[idx,0],dat[idx,1],azim,hdst)
                     spro.append([tlo, tla, dat[idx, 2]+vdst])
                     #
-                    # check distance with the previous point
+                    # check distance with the previous point and depths Vs
+                    # previous points
                     if i > 0:
                         check = distance(tlo, tla, dat[idx, 2]+vdst,
                                          spro[-2][0], spro[-2][1], spro[-2][2])
@@ -194,6 +116,11 @@ def get_interpolated_profiles_old(sps, lengths, number_of_samples):
                             msg += ' is incorrect: {:.3f} {:.3f}'.format(check,
                                                                          samp)
                             raise ValueError(msg)
+                        # new depth larger than previous
+                        if numpy.any(numpy.array(spro)[:-1, 2] > spro[-1][2]):
+                            print(spro)
+                            raise ValueError('')
+
                 #
                 # new distance left over
                 cdst = (dst + cdst) - num_new_points * samp
@@ -251,8 +178,10 @@ def read_profiles_csv(foldername, upper_depth=0, lower_depth=1000,
 def write_profiles_csv(sps, foldername):
     """
     :parameter dic sps:
+        A dictionary with the sampled profiles
     :parameter str foldername:
-        The name of the file which contains the interpolated profiles
+        The name of the folder where we write the files with the interpolated
+        profiles
     """
     if not os.path.exists(foldername):
         os.mkdir(foldername)
@@ -285,33 +214,26 @@ def write_edges_csv(sps, foldername):
 
 def main(argv):
     """
-    #old doc
     argv[0] - Folder name
-    argv[1] - Sampling distance [km] # erasing so increments change!!!!
+    argv[1] - Sampling distance [km]
     argv[2] - Output folder name
-    argv[3] - Maximum sampling distance # am now computing this from segments
-    #new doc
-    argv[0] - input folder name
-    argv[1] - output folder name
-    argv[2] - sampling distance
+    argv[3] - Maximum sampling distance
     """
-    #with new setup
     in_path = os.path.abspath(argv[0])
-    out_path = os.path.abspath(argv[1])
+    out_path = os.path.abspath(argv[2])
     #
     # Check input
-    if len(argv) < 2:
+    if len(argv) < 3:
         tmps = 'Usage: create_subduction_model.py <in_folder>'
-        tmps += ' <out_folder>'
+        tmps += ' <ini_filename> <out_folder>'
         print(tmps)
         exit(0)
     #
-    
-     #Sampling distance [km] SHOULD WE COMPUTE THIS INSTEAD? 
-    if len(argv) < 3:
+    # Sampling distance [km]
+    if len(argv) < 4:
         maximum_sampling_distance = 25.
     else:
-        maximum_sampling_distance = float(argv[2])
+        maximum_sampling_distance = float(argv[3])
     #
     # Check folders
     if in_path == out_path:
@@ -324,7 +246,7 @@ def main(argv):
     # Read profiles
     sps, dmin, dmax = read_profiles_csv(in_path)
     #
-    # Compute lengths -> note: max_sampling_distance is actually a SMALL number 
+    # Compute lengths
     lengths, longest_key, shortest_key = get_profiles_length(sps)
     number_of_samples = numpy.ceil(lengths[longest_key]/maximum_sampling_distance)
     print('Number of subsegments:', number_of_samples)
