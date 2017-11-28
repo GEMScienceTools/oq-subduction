@@ -6,6 +6,7 @@ import sys
 import glob
 import numpy
 
+from pyproj import Proj
 from openquake.hazardlib.geo.geodetic import distance, point_at, azimuth
 
 
@@ -61,16 +62,15 @@ def get_interpolated_profiles(sps, lengths, number_of_samples):
         dat = sps[key]
         #
         # projecting profile coordinates
-	#old way
-#        p = Proj('+proj=lcc +lon_0={:f}'.format(dat[0, 0]))
-#        x, y = p(dat[:, 0], dat[:, 1])
-#        x = x / 1e3  # m -> km
-#        y = y / 1e3  # m -> km
+        p = Proj('+proj=lcc +lon_0={:f}'.format(dat[0, 0]))
+        x, y = p(dat[:, 0], dat[:, 1])
+        x = x / 1e3  # m -> km
+        y = y / 1e3  # m -> km
         #
         # horizontal 'slope'
- #       hslope = numpy.arctan((y[-1]-y[0]) / (x[-1]-x[0]))
- #       xfact = numpy.cos(hslope)
- #       yfact = numpy.sin(hslope)
+        hslope = numpy.arctan((y[-1]-y[0]) / (x[-1]-x[0]))
+        xfact = numpy.cos(hslope)
+        yfact = numpy.sin(hslope)
         #
         # initialise
         idx = 0

@@ -76,7 +76,7 @@ def _plot_h_eqk_histogram(axes, csda, dep_max=[], dis_max=[]):
     
 
     plt.bar(edges_dist[:-1], height=seism_dist_hist[0],
-            width=numpy.diff(edges_dist)[0], ec='blue')
+            width=numpy.diff(edges_dist)[0], fc='none', ec='blue')
     
     if csda.gcmt is not None:
         cat_gcmt = csda.gcmt
@@ -121,10 +121,10 @@ def _plot_v_eqk_histogram(axes, csda, dep_max=[], dis_max=[]):
 
     if dep_max and dis_max:
         edges_dep = numpy.arange(0, dep_max, 5)
-#        edges_dist = numpy.arange(0, dis_max, 5)
+        edges_dist = numpy.arange(0, dis_max, 5)
     else:
         edges_dep = numpy.arange(0, MAX_DEPTH, 5)
-#        edges_dist = numpy.arange(0, MAX_DIST, 5)
+        edges_dist = numpy.arange(0, MAX_DIST, 5)
 
     seism_depth_hist = scipy.histogram(tmp_dep[iii], edges_dep)
 

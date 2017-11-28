@@ -96,6 +96,7 @@ def plot_sub_profiles(foldername):
 
     return ax, (minlo, maxlo, minla, maxla, minde, maxde), qual
 
+
 def main(argv):
     """
     argv[0] - Folder containing the cross-section profiles and the edges

@@ -525,6 +525,79 @@ def rsmpl(ix, iy, sampling_dist ):
     return numpy.array(resampled_cs)
 
 
+def rsmpl(ix, iy, sampling_dist):
+    direct = 1
+    idx = 0
+    #
+    # create three lists: one with longitude, one with latitude and one with
+    # depth
+    lo = list(ix)
+    la = list(iy)
+    de = list(numpy.zeros_like(ix))
+    #
+    # initialise the variable used to store the cumulated distance
+    cdist = 0.
+    #
+    # initialise the list with the resampled nodes
+    resampled_cs = [[lo[idx], la[idx]]]
+    #
+    # set the starting point
+    slo = lo[idx]
+    sla = la[idx]
+    sde = de[idx]
+    #
+    # get the azimuth of the first segment on the edge in the given direction
+    azim = azimuth(lo[idx], la[idx], lo[idx+direct], la[idx+direct])
+    #
+    # resampling
+    while 1:
+        #
+        # this is a sanity check
+        assert idx <= len(lo)-1
+        #
+        # check loop exit condition
+        if direct > 0 and idx > len(lo)-1:
+            break
+        #
+        # compute the distance between the starting point and the next point
+        # on the profile
+        segment_len = distance(slo, sla, sde, lo[idx+direct], la[idx+direct],
+                               de[idx+direct])
+        #
+        # search for the point
+        if cdist+segment_len > sampling_dist:
+            #
+            # this is the lenght of the last segment-fraction needed to
+            # obtain the sampling distance
+            delta = sampling_dist - cdist
+            #
+            # add a new point to the cross section
+            pnts = npoints_towards(slo, sla, sde, azim, delta, 0., 2)
+            #
+            # update the starting point
+            slo = pnts[0][-1]
+            sla = pnts[1][-1]
+            sde = pnts[2][-1]
+            resampled_cs.append([slo, sla])
+            #
+            # reset the cumulative distance
+            cdist = 0.
+        else:
+            cdist += segment_len
+            idx += direct
+            slo = lo[idx]
+            sla = la[idx]
+            sde = de[idx]
+            #
+            # get the azimuth of the profile
+            if idx < len(lo)-1:
+                azim = azimuth(lo[idx], la[idx],
+                               lo[idx+direct], la[idx+direct])
+            else:
+                break
+    return numpy.array(resampled_cs)
+
+
 class CrossSection:
     """
     :parameter float olo:
