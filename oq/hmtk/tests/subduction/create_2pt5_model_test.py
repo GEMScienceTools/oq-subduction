@@ -17,6 +17,7 @@ from openquake.hazardlib.geo.geodetic import distance
 
 CS_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data/cs')
 CAM_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data/cs_cam')
+PAISL_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data/cs_paisl')
 
 
 class WriteProfilesEdgesTest(unittest.TestCase):
@@ -142,6 +143,47 @@ class GetInterpolatedProfilesTest(unittest.TestCase):
         #
         # read data and compute distances
         sps, dmin, dmax = read_profiles_csv(CAM_DATA_PATH)
+        lengths, longest_key, shortest_key = get_profiles_length(sps)
+        maximum_sampling_distance = 30.
+        num_sampl = np.ceil(lengths[longest_key] / maximum_sampling_distance)
+        #
+        # get interpolated profiles
+        ssps = get_interpolated_profiles(sps, lengths, num_sampl)
+        lll = []
+        for key in sorted(ssps.keys()):
+            odat = sps[key]
+            dat = ssps[key]
+
+            distances = distance(dat[0:-2, 0], dat[0:-2, 1], dat[0:-2, 2],
+                                 dat[1:-1, 0], dat[1:-1, 1], dat[1:-1, 2])
+            expected = lengths[key] / num_sampl * np.ones_like(distances)
+            np.testing.assert_allclose(distances, expected, rtol=3)
+            #
+            # update the list with the number of points in each profile
+            lll.append(len(dat[:, 0]))
+            #
+            # check that the interpolated profile starts from the same point
+            # of the original one
+            self.assertListEqual([odat[0, 0], odat[0, 1]],
+                                 [dat[0, 0], dat[0, 1]])
+            #
+            # check that the depth of the profiles is always increasing
+            computed = np.all(np.sign(dat[:-1, 2]-dat[1:, 2]) < 0)
+            self.assertTrue(computed)
+        #
+        # check that all the profiles have all the same length
+        dff = np.diff(np.array(lll))
+        zeros = np.zeros_like(dff)
+        np.testing.assert_allclose(dff, zeros, rtol=2)
+
+
+    def test_interpolation_paisl(self):
+        """
+        Test profile interpolation: PAISL | maximum sampling: 30 km
+        """
+        #
+        # read data and compute distances
+        sps, dmin, dmax = read_profiles_csv(PAISL_DATA_PATH)
         lengths, longest_key, shortest_key = get_profiles_length(sps)
         maximum_sampling_distance = 30.
         num_sampl = np.ceil(lengths[longest_key] / maximum_sampling_distance)

@@ -62,7 +62,8 @@ def get_interpolated_profiles(sps, lengths, number_of_samples):
         dat = sps[key]
         #
         # projecting profile coordinates
-        p = Proj('+proj=lcc +lon_0={:f}'.format(dat[0, 0]))
+        #p = Proj('+proj=lcc +lon_0={:f}'.format(dat[0, 0]))
+        p = Proj(init='EPSG:4326')
         x, y = p(dat[:, 0], dat[:, 1])
         x = x / 1e3  # m -> km
         y = y / 1e3  # m -> km
