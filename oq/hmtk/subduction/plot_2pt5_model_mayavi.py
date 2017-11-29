@@ -70,7 +70,7 @@ def main(argv):
     plot_sub_profiles(foldername)
     plot_edges(foldername)
     # Plot catalogue
-    plt_catalogue(fname_eqk_cat)
+    #plt_catalogue(fname_eqk_cat)
     #
     mlab.show()
 

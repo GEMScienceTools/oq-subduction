@@ -129,8 +129,16 @@ def _plot_v_eqk_histogram(axes, csda, dep_max=[], dis_max=[]):
     seism_depth_hist = scipy.histogram(tmp_dep[iii], edges_dep)
 
     plt.barh(edges_dep[:-1], seism_depth_hist[0],
-             height=numpy.diff(edges_dep)[0], fc='none', ec='blue')
+             height=numpy.diff(edges_dep)[0], ec='blue')
     plt.ylabel('Depth [km]')
+
+    if csda.gcmt is not None:
+        cat_gcmt = csda.gcmt
+        tmp_dep = cat_gcmt.data['depth'][:]
+        gcmt_dep_hist = scipy.histogram(tmp_dep, edges_dep)
+
+        plt.barh(edges_dep[:-1], gcmt_dep_hist[0]-1,
+                height=numpy.diff(edges_dep)[0]-1,fc='red' )
 
     xmax = numpy.ceil(max(seism_depth_hist[0])/10.)*10.
     axes.grid(which='both', zorder=20)
@@ -266,6 +274,8 @@ def _plot_moho(axes, csda):
     olo = csda.csec.olo
     ola = csda.csec.ola
     moho = csda.moho
+    if moho.size==3:
+       moho = numpy.concatenate((moho,moho),axis=0).reshape((2,3)) 
     mdsts = geodetic_distance(olo, ola, moho[:, 0], moho[:, 1])
     iii = numpy.argsort(mdsts)
     plt.plot(mdsts[iii], moho[iii, 2], '--p', zorder=100, linewidth=2)
@@ -283,6 +293,8 @@ def _plot_litho(axes, csda):
     olo = csda.csec.olo
     ola = csda.csec.ola
     litho = csda.litho
+    if litho.size==3:
+       litho = numpy.concatenate((litho,litho),axis=0).reshape((2,3)) 
     lists = geodetic_distance(olo, ola, litho[:, 0], litho[:, 1])
     lll = numpy.argsort(lists)
     plt.plot(lists[lll], litho[lll, 2], '-.', zorder=100, linewidth=2)
@@ -440,7 +452,7 @@ def plot(csda, depp, lnght):
     _plot_moho(plt.subplot(gs[3]), csda)
     _plot_litho(plt.subplot(gs[3]), csda)
     _plot_topo(plt.subplot(gs[3]), csda)
-    #_plot_volc(plt.subplot(gs[3]), csda)
+    _plot_volc(plt.subplot(gs[3]), csda)
 
     _plot_focal_mech(plt.subplot(gs[3]), csda)
     _plot_slab1pt0(plt.subplot(gs[3]), csda)
