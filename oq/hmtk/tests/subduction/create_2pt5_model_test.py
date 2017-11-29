@@ -17,6 +17,7 @@ from openquake.hazardlib.geo.geodetic import distance
 
 CS_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data/cs')
 CAM_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data/cs_cam')
+PAISL_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data/cs_paisl')
 
 
 class WriteProfilesEdgesTest(unittest.TestCase):
@@ -98,7 +99,7 @@ class GetProfilesLengthTest(unittest.TestCase):
 
 class GetInterpolatedProfilesTest(unittest.TestCase):
 
-    def test_interpolation_simple(self):
+    def test_interpolation_simple_30km(self):
         """
         Test profile interpolation: simple case | sampling: 30 km
         """
@@ -135,6 +136,18 @@ class GetInterpolatedProfilesTest(unittest.TestCase):
         zeros = np.zeros_like(dff)
         np.testing.assert_allclose(dff, zeros, rtol=2)
 
+    def test_interpolation_simple_20km(self):
+        """
+        Test profile interpolation: simple case | maximum sampling: 20 km
+        """
+        interpolation(CS_DATA_PATH, 20)
+
+    def test_interpolation_simple_10km(self):
+        """
+        Test profile interpolation: simple case | maximum sampling: 10 km
+        """
+        interpolation(CS_DATA_PATH, 20)
+
     def test_interpolation_cam(self):
         """
         Test profile interpolation: CAM | maximum sampling: 30 km
@@ -152,7 +165,6 @@ class GetInterpolatedProfilesTest(unittest.TestCase):
         for key in sorted(ssps.keys()):
             odat = sps[key]
             dat = ssps[key]
-            print(dat)
 
             distances = distance(dat[0:-2, 0], dat[0:-2, 1], dat[0:-2, 2],
                                  dat[1:-1, 0], dat[1:-1, 1], dat[1:-1, 2])
@@ -168,14 +180,73 @@ class GetInterpolatedProfilesTest(unittest.TestCase):
                                  [dat[0, 0], dat[0, 1]])
             #
             # check that the depth of the profiles is always increasing
-            print(dat[:-1, 2])
-            print(dat[1:, 2])
-            print('dff', dat[:-1, 2]-dat[1:, 2])
             computed = np.all(np.sign(dat[:-1, 2]-dat[1:, 2]) < 0)
-            print(computed)
             self.assertTrue(computed)
         #
         # check that all the profiles have all the same length
         dff = np.diff(np.array(lll))
         zeros = np.zeros_like(dff)
         np.testing.assert_allclose(dff, zeros, rtol=2)
+
+    def test_interpolation_cam_20km(self):
+        """
+        Test profile interpolation: CAM | maximum sampling: 20 km
+        """
+        interpolation(CAM_DATA_PATH, 20)
+
+    def test_interpolation_paisl_30km(self):
+        """
+        Test profile interpolation: PAISL | maximum sampling: 30 km
+        """
+        interpolation(PAISL_DATA_PATH, 30)
+
+    def test_interpolation_paisl_20km(self):
+        """
+        Test profile interpolation: PAISL | maximum sampling: 20 km
+        """
+        interpolation(PAISL_DATA_PATH, 20)
+
+    def test_interpolation_paisl_10km(self):
+        """
+        Test profile interpolation: PAISL | maximum sampling: 10 km
+        """
+        interpolation(PAISL_DATA_PATH, 10)
+
+
+def interpolation(foldername, maximum_sampling_distance):
+    """
+    """
+    #
+    # read data and compute distances
+    sps, dmin, dmax = read_profiles_csv(foldername)
+    lengths, longest_key, shortest_key = get_profiles_length(sps)
+    num_sampl = np.ceil(lengths[longest_key] / maximum_sampling_distance)
+    #
+    # get interpolated profiles
+    ssps = get_interpolated_profiles(sps, lengths, num_sampl)
+    lll = []
+    for key in sorted(ssps.keys()):
+        odat = sps[key]
+        dat = ssps[key]
+
+        distances = distance(dat[0:-2, 0], dat[0:-2, 1], dat[0:-2, 2],
+                             dat[1:-1, 0], dat[1:-1, 1], dat[1:-1, 2])
+        expected = lengths[key] / num_sampl * np.ones_like(distances)
+        np.testing.assert_allclose(distances, expected, rtol=3)
+        #
+        # update the list with the number of points in each profile
+        lll.append(len(dat[:, 0]))
+        #
+        # check that the interpolated profile starts from the same point
+        # of the original one
+        np.testing.assert_allclose([odat[0, 0], odat[0, 1]],
+                                   [dat[0, 0], dat[0, 1]])
+        #
+        # check that the depth of the profiles is always increasing
+        computed = np.all(np.sign(dat[:-1, 2]-dat[1:, 2]) < 0)
+        np.testing.assert_equal(computed, True)
+    #
+    # check that all the profiles have all the same length
+    dff = np.diff(np.array(lll))
+    zeros = np.zeros_like(dff)
+    np.testing.assert_allclose(dff, zeros, rtol=2)

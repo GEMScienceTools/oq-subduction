@@ -7,6 +7,7 @@ import glob
 import numpy
 
 from pyproj import Proj
+from pyproj import Geod
 from openquake.hazardlib.geo.geodetic import distance, point_at, azimuth
 
 
@@ -62,15 +63,10 @@ def get_interpolated_profiles(sps, lengths, number_of_samples):
         dat = sps[key]
         #
         # projecting profile coordinates
-        p = Proj('+proj=lcc +lon_0={:f}'.format(dat[0, 0]))
-        x, y = p(dat[:, 0], dat[:, 1])
-        x = x / 1e3  # m -> km
-        y = y / 1e3  # m -> km
+        g = Geod(ellps='WGS84')
         #
         # horizontal 'slope'
-        hslope = numpy.arctan((y[-1]-y[0]) / (x[-1]-x[0]))
-        xfact = numpy.cos(hslope)
-        yfact = numpy.sin(hslope)
+        az_prof, _, _ = g.inv(dat[0, 0], dat[0, 1], dat[-1, 0], dat[-1, 1])
         #
         # initialise
         idx = 0
@@ -81,8 +77,10 @@ def get_interpolated_profiles(sps, lengths, number_of_samples):
         while idx < len(dat)-1:
             #
             # segment length
-            dst = ((x[idx] - x[idx+1])**2 + (y[idx] - y[idx+1])**2 +
-                   (dat[idx, 2] - dat[idx+1, 2])**2)**.5
+            _, _, dst = g.inv(dat[idx, 0], dat[idx, 1],
+                              dat[idx+1, 0], dat[idx+1, 1])
+            dst /= 1e3
+            dst = (dst**2 + (dat[idx, 2] - dat[idx+1, 2])**2)**.5
             #
             # calculate total distance i.e. cumulated + new segment
             total_dst = cdst + dst
@@ -92,8 +90,6 @@ def get_interpolated_profiles(sps, lengths, number_of_samples):
             #
             # take samples if possible
             if num_new_points > 0:
-                #
-                # segment dip angle
                 dipr = numpy.arcsin((dat[idx+1, 2]-dat[idx, 2])/dst)
                 hfact = numpy.cos(dipr)
                 vfact = numpy.sin(dipr)
@@ -103,9 +99,15 @@ def get_interpolated_profiles(sps, lengths, number_of_samples):
                     tdst = (i+1) * samp - cdst
                     hdst = tdst * hfact
                     vdst = tdst * vfact
-                    tlo, tla = p((x[idx] + hdst*xfact)*1e3,
-                                 (y[idx] + hdst*yfact)*1e3, inverse=True)
+                    # tlo, tla = p((x[idx] + hdst*xfact)*1e3,
+                    #              (y[idx] + hdst*yfact)*1e3, inverse=True)
+                    tlo, tla, _ = g.fwd(dat[idx, 0], dat[idx, 1], az_prof,
+                                        hdst*1e3)
                     spro.append([tlo, tla, dat[idx, 2]+vdst])
+                    #
+                    # check that the h and v distances are coherent with
+                    # the original distance
+                    assert abs(tdst-(hdst**2+vdst**2)**.5) < 1e-4
                     #
                     # check distance with the previous point and depths Vs
                     # previous points
@@ -119,7 +121,6 @@ def get_interpolated_profiles(sps, lengths, number_of_samples):
                             raise ValueError(msg)
                         # new depth larger than previous
                         if numpy.any(numpy.array(spro)[:-1, 2] > spro[-1][2]):
-                            print(spro)
                             raise ValueError('')
 
                 #
