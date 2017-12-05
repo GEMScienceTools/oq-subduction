@@ -70,18 +70,17 @@ class CrossSectionData:
         minlo, maxlo, minla, maxla = self.csec.get_mm()
         # Find the nodes of the grid within a certain distance from the plane
         # of the cross-section
-        idx = numpy.nonzero(slab1pt0or[:,0] > 180)
+        idx = numpy.nonzero(slab1pt0or[:, 0] > 180)
         slab1pt0 = slab1pt0or
         if len(idx[0]):
-             slab1pt0[idx[0], 0] = slab1pt0[idx[0], 0] - 360.
-        idxslb = self.csec.get_grd_nodes_within_buffer(slab1pt0[:,0],
-                                                       slab1pt0[:,1],
+            slab1pt0[idx[0], 0] = slab1pt0[idx[0], 0] - 360.
+        idxslb = self.csec.get_grd_nodes_within_buffer(slab1pt0[:, 0],
+                                                       slab1pt0[:, 1],
                                                        bffer,
                                                        minlo, maxlo,
                                                        minla, maxla)
         if idxslb is not None:
-            self.slab1pt0 = numpy.squeeze(slab1pt0[idxslb,:])
-
+            self.slab1pt0 = numpy.squeeze(slab1pt0[idxslb, :])
 
     def set_crust1pt0_moho_depth(self, filename, bffer=200.):
         """
@@ -95,17 +94,16 @@ class CrossSectionData:
             xx = re.split('\s+', re.sub('\s+$', '', re.sub('^\s+', '', line)))
             datal.append([float(val) for val in xx])
         dataa = numpy.array(datal)
-        minlo, maxlo, minla, maxla = self.csec.get_mm()
-        idxs = self.csec.get_grd_nodes_within_buffer(dataa[:,0],
-                                                     dataa[:,1],
+        minlo, maxlo, minla, maxla = self.csec.get_mm(2.0)
+        idxs = self.csec.get_grd_nodes_within_buffer(dataa[:, 0],
+                                                     dataa[:, 1],
                                                      bffer,
                                                      minlo, maxlo,
                                                      minla, maxla)
         if idxs is not None and len(idxs):
             boo = numpy.zeros_like(dataa[:, 0], dtype=int)
             boo[idxs[0]] = 1
-            self.moho = numpy.squeeze(dataa[idxs,:])
-
+            self.moho = numpy.squeeze(dataa[idxs, :])
 
     def set_litho_moho_depth(self, filename, bffer=100.):
         """
@@ -120,16 +118,15 @@ class CrossSectionData:
             datal.append([float(val) for val in xx])
         dataa = numpy.array(datal)
         minlo, maxlo, minla, maxla = self.csec.get_mm()
-        idxl = self.csec.get_grd_nodes_within_buffer(dataa[:,0],
-                                                     dataa[:,1],
+        idxl = self.csec.get_grd_nodes_within_buffer(dataa[:, 0],
+                                                     dataa[:, 1],
                                                      bffer,
                                                      minlo, maxlo,
                                                      minla, maxla)
         if idxl is not None and len(idxl):
             boo = numpy.zeros_like(dataa[:, 0], dtype=int)
             boo[idxl[0]] = 1
-            self.litho = numpy.squeeze(dataa[idxl,:])
-
+            self.litho = numpy.squeeze(dataa[idxl, :])
 
     def set_gcmt(self, filename, bffer=75.):
         """
@@ -142,12 +139,13 @@ class CrossSectionData:
         lac = cmt_cat.data['latitude']
         minlo, maxlo, minla, maxla = self.csec.get_mm()
         idxs = self.csec.get_grd_nodes_within_buffer(loc, lac, bffer,
-                                                     minlo, maxlo, minla, maxla)
+                                                     minlo, maxlo, minla,
+                                                     maxla)
         if idxs is not None:
             cmt_cat.select_catalogue_events(idxs)
             self.gcmt = cmt_cat
 
-    def set_topo(self, filename,bffer=0.25):
+    def set_topo(self, filename, bffer=0.25):
         """
         :parameter filename:
             Name of the grid file containing the topography
@@ -365,14 +363,26 @@ class CrossSection:
         self.ids = ids
         self._set_vertexes()
 
-    def get_mm(self):
+    def get_mm(self, delta=0.0):
         """
         Get min and maximum values
         """
-        lomin = min(self.plo)
-        lomax = max(self.plo)
-        lamin = min(self.pla)
-        lamax = max(self.pla)
+        #
+        lomin = min(self.plo) - delta
+        if lomin < -180:
+            lomin = 360 + lomin
+        #
+        lomax = max(self.plo) + delta
+        if lomax > 180:
+            lomax = lomax - 360
+        #
+        lamin = min(self.pla) - delta
+        if lamin < -90:
+            raise ValueError('Latitude lower than -90')
+        #
+        lamax = max(self.pla) + delta
+        if lamax > 90:
+            raise ValueError('Latitude greater than 90')
         return lomin, lomax, lamin, lamax
 
     def _set_vertexes(self):
@@ -393,13 +403,13 @@ class CrossSection:
         """
         line = Line([Point(lo, la) for lo, la in zip(self.plo, self.pla)])
         coo = [(lo, la) for lo, la in zip(catalogue.data['longitude'],
-                                           catalogue.data['latitude'])
-              ]
+                                          catalogue.data['latitude'])]
         dst = get_min_distance(line, numpy.array(coo))
         return numpy.nonzero(abs(dst) <= buffer_distance)
 
     def get_grd_nodes_within_buffer(self, x, y, buffer_distance,
-                                    minlo=-180, maxlo=180, minla=-90, maxla=90):
+                                    minlo=-180, maxlo=180, minla=-90,
+                                    maxla=90):
         """
         :parameter x:
             An iterable containing the longitudes of the points defining the
@@ -415,16 +425,17 @@ class CrossSection:
         :parameter maxlo:
         :parameter maxla:
         """
-        line = Line([Point(lo, la) for lo, la in zip(self.plo, self.pla) ])
-        idxs = numpy.nonzero((x > minlo) & (x < maxlo) & (y > minla) & (y < maxla))
+        line = Line([Point(lo, la) for lo, la in zip(self.plo, self.pla)])
+        idxs = numpy.nonzero((x > minlo) & (x < maxlo) &
+                             (y > minla) & (y < maxla))
         xs = x[idxs[0]]
         ys = y[idxs[0]]
-        coo = [ (lo, la) for lo, la in zip(list(xs), list(ys)) ]
+        coo = [(lo, la) for lo, la in zip(list(xs), list(ys))]
         if len(coo):
             dst = get_min_distance(line, numpy.array(coo))
             return idxs[0][abs(dst) <= buffer_distance]
         else:
-            print ('   Warning: no nodes found around the cross-section')
+            print('   Warning: no nodes found around the cross-section')
             return None
 
 
@@ -437,18 +448,23 @@ def get_min_distance(line, pnts):
     :parameter pnts:
         A nx2 array
     """
+    #
+    #
     assert isinstance(pnts, numpy.ndarray)
-    coo = numpy.array([ (pnt.longitude, pnt.latitude) for pnt in line.points ])
+    coo = numpy.array([(pnt.longitude, pnt.latitude) for pnt in line.points])
+    #
+    # this handles the case of a multiine
     if len(coo[:, 0]) > 2:
         cx = numpy.stack((coo[:-1, 0], coo[1:, 0]))
     else:
-        cx = [
-         coo[:, 0]]
+        cx = [coo[:, 0]]
     if len(coo[:, 0]) > 2:
         cy = list(numpy.stack((coo[:-1, 1], coo[1:, 1])))
     else:
         cy = [
          coo[:, 1]]
+    #
+    # calculate distances
     distances = numpy.zeros_like(pnts[:, 0])
     distances[:] = 1e+100
     for segx, segy in zip(cx, cy):
@@ -461,7 +477,8 @@ def get_min_distance(line, pnts):
         pdy = segy[1] - pnts[:, 1]
         dot2 = sdx * pdx + sdy * pdy
         idx = numpy.nonzero((numpy.sign(dot1) < 0) & (numpy.sign(dot2) > 0))
-        dst = min_distance_to_segment(segx, segy, pnts[idx[0], 0], pnts[idx[0], 1])
+        dst = min_distance_to_segment(segx, segy, pnts[idx[0], 0],
+                                      pnts[idx[0], 1])
         distances[idx[0]] = dst
 
     return distances
