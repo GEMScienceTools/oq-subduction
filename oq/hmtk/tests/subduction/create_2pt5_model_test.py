@@ -150,6 +150,52 @@ class GetInterpolatedProfilesTest(unittest.TestCase):
 
     def test_interpolation_cam(self):
         """
+        Test profile interpolation: PAISL | maximum sampling: 30 km
+        """
+        #
+        # read data and compute distances
+        sps, dmin, dmax = read_profiles_csv(PAISL_DATA_PATH)
+        lengths, longest_key, shortest_key = get_profiles_length(sps)
+        maximum_sampling_distance = 30.
+        num_sampl = np.ceil(lengths[longest_key] / maximum_sampling_distance)
+        #
+        # get interpolated profiles
+        ssps = get_interpolated_profiles(sps, lengths, num_sampl)
+        lll = []
+        for key in sorted(ssps.keys()):
+            odat = sps[key]
+            dat = ssps[key]
+            print(dat)
+
+            distances = distance(dat[0:-2, 0], dat[0:-2, 1], dat[0:-2, 2],
+                                 dat[1:-1, 0], dat[1:-1, 1], dat[1:-1, 2])
+            expected = lengths[key] / num_sampl * np.ones_like(distances)
+            np.testing.assert_allclose(distances, expected, rtol=3)
+            #
+            # update the list with the number of points in each profile
+            lll.append(len(dat[:, 0]))
+            #
+            # check that the interpolated profile starts from the same point
+            # of the original one
+            self.assertListEqual([odat[0, 0], odat[0, 1]],
+                                 [dat[0, 0], dat[0, 1]])
+            #
+            # check that the depth of the profiles is always increasing
+            print(dat[:-1, 2])
+            print(dat[1:, 2])
+            print('dff', dat[:-1, 2]-dat[1:, 2])
+            computed = np.all(np.sign(dat[:-1, 2]-dat[1:, 2]) < 0)
+            print(computed)
+            self.assertTrue(computed)
+        #
+        # check that all the profiles have all the same length
+        dff = np.diff(np.array(lll))
+        zeros = np.zeros_like(dff)
+        np.testing.assert_allclose(dff, zeros, rtol=2)
+
+
+    def test_interpolation_paisl(self):
+        """
         Test profile interpolation: CAM | maximum sampling: 30 km
         """
         #
