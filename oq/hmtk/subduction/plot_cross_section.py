@@ -472,7 +472,7 @@ def plot(csda, depp, lnght):
     ax3.grid(which='both', zorder=20)
 
     # Showing results
-    #cid = fig.canvas.mpl_connect('button_press_event', onclick)
+    cid = fig.canvas.mpl_connect('button_press_event', onclick)
 
     line, = ax3.plot([], [], zorder=100)  # empty line
     point, = ax3.plot([], [], 'xr', zorder=100)
