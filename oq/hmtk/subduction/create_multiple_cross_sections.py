@@ -16,7 +16,7 @@ from oq.hmtk.subduction.cross_sections import CrossSection, Trench
 from openquake.hmtk.seismicity.selector import CatalogueSelector
 
 
-def get_cs(trench, ini_filename, cs_len, cs_depth, interdistance):
+def get_cs(trench, ini_filename, cs_len, cs_depth, interdistance,qual):
     """
     :parameter trench:
         An instance of the :class:`Trench` class
@@ -29,14 +29,15 @@ def get_cs(trench, ini_filename, cs_len, cs_depth, interdistance):
     """
     #
     # Plot the traces of cross-sections
-    ts = trench.resample(interdistance)
     fou = open('cs_traces.cs', 'w')
 
     cs_dict = {}
-    for idx, cs in enumerate(ts.iterate_cross_sections(interdistance,
+    for idx, cs in enumerate(trench.iterate_cross_sections(interdistance,
                                                            cs_len)):
         if cs is not None:
             cs_dict['%s' % idx] = cs
+            if qual==1:
+                cs.plo[:] = ([x-360. if x>180. else x for x in cs.plo[:]])
             tmps = '%f %f %f %f %f %d %s\n' % (cs.plo[0],
                                             cs.pla[0],
                                             cs_depth,
@@ -85,7 +86,8 @@ def plot(trench, cat, cs_dict, interdistance):
     # labels = [left,right,top,bottom]
     m.drawcoastlines()
     m.drawmeridians(numpy.arange(numpy.floor(minlo/10.)*10,
-                                numpy.ceil(maxlo/10.)*10, 5.),
+                                 numpy.ceil(maxlo/10.)*10, 5.),
+
                 labels=[False, False, False, True])
     m.drawparallels(numpy.arange(numpy.floor(minla/10.)*10,
                                 numpy.ceil(maxla/10.)*10, 5.),
@@ -146,18 +148,24 @@ def main(argv):
 
     # Load trench axis
     fin = open(fname_trench, 'r')
-    trench = []
+    lotmp = []; latmp = []
     for line in fin:
         aa = re.split('\s+', re.sub('^\s+', '', line))
-        trench.append((float(aa[0]), float(aa[1])))
+        lotmp.append(float(aa[0]))
+        latmp.append(float(aa[1]))
     fin.close()
+    qual = 0
+    if (min(lotmp)/max(lotmp)<0.) & (min(lotmp)<-150.):
+        qual = 1
+        lotmp = (x+360. if x<0. else x for x in lotmp)
+    trench = list(zip(lotmp,latmp))
     trench = Trench(numpy.array(trench))
 
     # Load catalogue
     cat = pickle.load(open(fname_eqk_cat, 'rb'))
 
     # Get cross-sections
-    cs_dict = get_cs(trench, argv[0], cs_length, cs_depth, interdistance)
+    cs_dict = get_cs(trench, argv[0], cs_length, cs_depth, interdistance, qual)
 
     # Plotting
     plot(trench, cat, cs_dict, interdistance)
