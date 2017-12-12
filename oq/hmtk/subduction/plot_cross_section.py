@@ -73,11 +73,11 @@ def _plot_h_eqk_histogram(axes, csda, dep_max=[], dis_max=[]):
 
     seism_depth_hist = scipy.histogram(tmp_dep[iii], edges_dep)
     seism_dist_hist = scipy.histogram(dsts[iii], edges_dist)
-    
+
 
     plt.bar(edges_dist[:-1], height=seism_dist_hist[0],
             width=numpy.diff(edges_dist)[0], fc='none', ec='blue')
-    
+
     if csda.gcmt is not None:
         cat_gcmt = csda.gcmt
         cmt_dst = geodetic_distance(olo,
@@ -275,7 +275,7 @@ def _plot_moho(axes, csda):
     ola = csda.csec.ola
     moho = csda.moho
     if moho.size==3:
-       moho = numpy.concatenate((moho,moho),axis=0).reshape((2,3)) 
+       moho = numpy.concatenate((moho,moho),axis=0).reshape((2,3))
     mdsts = geodetic_distance(olo, ola, moho[:, 0], moho[:, 1])
     iii = numpy.argsort(mdsts)
     plt.plot(mdsts[iii], moho[iii, 2], '--p', zorder=100, linewidth=2)
@@ -294,7 +294,7 @@ def _plot_litho(axes, csda):
     ola = csda.csec.ola
     litho = csda.litho
     if litho.size==3:
-       litho = numpy.concatenate((litho,litho),axis=0).reshape((2,3)) 
+       litho = numpy.concatenate((litho,litho),axis=0).reshape((2,3))
     lists = geodetic_distance(olo, ola, litho[:, 0], litho[:, 1])
     lll = numpy.argsort(lists)
     plt.plot(lists[lll], litho[lll, 2], '-.', zorder=100, linewidth=2)
@@ -509,6 +509,7 @@ class LineBuilder:
                 self.point.set_data(self.xs, self.ys)
                 self.line.figure.canvas.draw()
                 self.point.figure.canvas.draw()
+                self.data = []
             elif event.key is 'f':
                 dat = numpy.array(self.data)
                 fname = './cs_%s.csv' % (self.csec.ids)

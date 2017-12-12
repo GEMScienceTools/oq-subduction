@@ -46,7 +46,7 @@ class GetCrustalModelTest(unittest.TestCase):
         numpy.testing.assert_equal(expected, csd.moho[:, 0:2])
 
     def test_idl_cross_section(self):
-        cs = CrossSection(-179.0, -50.0, [200], [-90])	
+        cs = CrossSection(-179.0, -50.0, [200], [-90])
         csd = CrossSectionData(cs)
         csd.set_crust1pt0_moho_depth(CRUST_DATA_PATH_IDL, bffer=100.)
         expected = [[-179.5,-49.5],[-179.5,-50.5],[178.5,-49.5],[179.5,-49.5],[178.5,-50.5],[179.5,-50.5]]
@@ -54,7 +54,31 @@ class GetCrustalModelTest(unittest.TestCase):
         print(expected)
         numpy.testing.assert_equal(expected,csd.moho[:, 0:2])
 
-       
+
+def _get_data(filename):
+    datal = []
+    for line in open(filename, 'r'):
+        xx = re.split('\s+', re.sub('\s+$', '', re.sub('^\s+', '', line)))
+        datal.append([float(val) for val in xx])
+    return datal
+
+
+class GetCrustalModelTest(unittest.TestCase):
+
+    def test_nesw_cross_section(self):
+        cs = CrossSection(45.0, 45.0, [100], [45])
+        csd = CrossSectionData(cs)
+        csd.set_crust1pt0_moho_depth(CRUST_DATA_PATH, bffer=200.)
+        expected = [[44.5, 46.5], [45.5, 45.5], [45.5, 44.5], [46.5, 44.5]]
+        print(csd.moho[:, 0:2])
+        numpy.testing.assert_equal(expected, csd.moho[:, 0:2])
+
+    def test_ns_cross_section(self):
+        cs = CrossSection(45.0, 45.0, [100], [0])
+        csd = CrossSectionData(cs)
+        csd.set_crust1pt0_moho_depth(CRUST_DATA_PATH, bffer=200.)
+        expected = [[43.5, 45.5], [44.5, 45.5], [45.5, 45.5], [46.5, 45.5]]
+        numpy.testing.assert_equal(expected, csd.moho[:, 0:2])
 
 
 class GetMMTest(unittest.TestCase):
