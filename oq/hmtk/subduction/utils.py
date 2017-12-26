@@ -274,9 +274,8 @@ def build_complex_surface_from_edges(foldername):
     #
     # fix edges
     if np.any(chks < 0.):
-        print(chks, type(chks))
         for i, chk in enumerate(chks):
-            if chk < 0:
+            if chk > 0:
                 edge = tedges[i]
                 tedges[i].points = edge.points[::-1]
                 print('flipping')
