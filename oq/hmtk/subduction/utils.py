@@ -224,6 +224,10 @@ def _check_edges(edges):
     """
     This checks that all the edges follow the right hand rule
     :param list edges:
+        The list of edges to be analysed.
+    :return:
+        An instance of :class:`numpy.ndarray` of cardinality equal to the
+        number of edges. Where integers are positive edges need to be flipped.
     """
     #
     # creating a matrix of points
@@ -232,6 +236,7 @@ def _check_edges(edges):
         pnts += [[pnt.longitude, pnt.latitude, pnt.depth] for pnt in
                  edge.points]
     pnts = np.array(pnts)
+    print(pnts.shape)
     #
     # projecting the points
     p = Proj('+proj=lcc +lon_0={:f}'.format(np.mean(pnts[:, 0])))
@@ -271,9 +276,11 @@ def build_complex_surface_from_edges(foldername):
     #
     # check edges
     chks = _check_edges(tedges)
+    print(chks)
     #
     # fix edges
-    if np.any(chks < 0.):
+    print(tedges[0].points[0])
+    if np.any(chks > 0.):
         for i, chk in enumerate(chks):
             if chk > 0:
                 edge = tedges[i]
@@ -292,7 +299,7 @@ def plot_complex_surface(tedges):
     """
     #
     # create the figure
-    fig = plt.figure(figsize=(15,10))
+    fig = plt.figure(figsize=(15, 10))
     ax = fig.add_subplot(111, projection='3d')
     #
     # plotting edges

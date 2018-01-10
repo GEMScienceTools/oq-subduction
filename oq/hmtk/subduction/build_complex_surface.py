@@ -54,7 +54,6 @@ def main(argv):
     to_id = ".*"
     if len(argv) > 6:
         to_id = argv[6]
-    print (to_id)
     #
     # Check input
     if len(argv) < 3:
@@ -78,6 +77,7 @@ def main(argv):
     #
     # compute length of profiles
     lengths, longest_key, shortest_key = get_profiles_length(sps)
+    print('key:', longest_key, shortest_key)
     #
     #
     number_of_samples = numpy.ceil(lengths[longest_key] /
