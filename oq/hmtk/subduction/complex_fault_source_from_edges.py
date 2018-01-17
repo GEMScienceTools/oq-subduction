@@ -3,6 +3,8 @@
 import os
 import sys
 
+
+from openquake.baselib import sap
 from oq.hmtk.subduction.edges_set import EdgesSet
 
 from openquake.hazardlib.sourcewriter import write_source_model
@@ -11,6 +13,7 @@ from openquake.hazardlib.sourcewriter import write_source_model
 def complex_fault_src_from_edges(edges_folder, out_nrml='source.xml'):
     """
     :param edges_folder:
+    :param out_nrml:
     """
     #
     # check edges folder
@@ -25,16 +28,14 @@ def complex_fault_src_from_edges(edges_folder, out_nrml='source.xml'):
 
 def runner(argv):
 
-    opt = 1
-    if opt == 0:
-        fname = '/Users/mpagani/NC/Hazard_Charles/Hazard_models/cc18/data/sources_subduction/profiles/sp_lan_int'
-        outfile = '/Users/mpagani/NC/Hazard_Charles/Hazard_models/ccar18/tmp_sub/nrml/int_lan.xml'
+    p = sap.Script(complex_fault_src_from_edges)
+    p.arg(name='edges_folder', help='Name of the folder containing the edges')
+    p.arg(name='out_nrml', help='Name of the output file')
 
-    if opt == 1:
-        fname = '/Users/mpagani/NC/Hazard_Charles/Hazard_models/cc18/data/sources_subduction/profiles/sp_cam_int'
-        outfile = '/Users/mpagani/NC/Hazard_Charles/Hazard_models/ccar18/tmp_sub/nrml/int_cam.xml'
-
-    complex_fault_src_from_edges(fname, outfile)
+    if len(argv) < 1:
+        print(p.help())
+    else:
+        p.callfunc()
 
 
 if __name__ == "__main__":
