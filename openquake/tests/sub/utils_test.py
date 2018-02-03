@@ -7,7 +7,7 @@ import unittest
 
 from openquake.hazardlib.geo import Line, Point
 
-from oq.hmtk.subduction.utils import (get_line_of_intersection,
+from openquake.sub.utils import (get_line_of_intersection,
                                       get_direction_cosines,
                                       build_complex_surface_from_edges,
                                       _check_edges)

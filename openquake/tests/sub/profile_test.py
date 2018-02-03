@@ -3,7 +3,7 @@ import os
 import numpy as np
 import unittest
 
-from oq.hmtk.subduction.profiles import ProfileSet
+from openquake.sub.profiles import ProfileSet
 from openquake.hazardlib.geo.geodetic import distance
 
 

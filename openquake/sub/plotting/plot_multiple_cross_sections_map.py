@@ -5,8 +5,8 @@ import sys
 import numpy
 import configparser
 import pickle
-from oq.hmtk.subduction.cross_sections import CrossSection, Trench
-from oq.hmtk.subduction.create_multiple_cross_sections import plot as pcs
+from openquake.sub.cross_sections import CrossSection, Trench
+from openquake.sub.create_multiple_cross_sections import plot as pcs
 
 
 def read_cs(filename):

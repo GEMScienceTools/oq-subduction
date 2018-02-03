@@ -5,7 +5,7 @@ import numpy
 
 from openquake.baselib import sap
 
-from oq.hmtk.subduction.create_2pt5_model import (read_profiles_csv,
+from openquake.sub.create_2pt5_model import (read_profiles_csv,
                                                   get_profiles_length,
                                                   get_interpolated_profiles,
                                                   write_edges_csv,

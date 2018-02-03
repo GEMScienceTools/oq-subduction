@@ -12,7 +12,7 @@ from mpl_toolkits.basemap import Basemap
 from matplotlib.patches import Circle
 from matplotlib.collections import PatchCollection
 
-from oq.hmtk.subduction.cross_sections import CrossSection, Trench
+from openquake.sub.cross_sections import CrossSection, Trench
 from openquake.hmtk.seismicity.selector import CatalogueSelector
 
 

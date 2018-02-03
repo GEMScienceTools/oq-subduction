@@ -5,8 +5,8 @@ import numpy
 import unittest
 
 from openquake.hmtk.seismicity.catalogue import Catalogue
-from oq.hmtk.subduction.cross_sections import CrossSection, CrossSectionData
-from oq.hmtk.subduction.cross_sections import get_min_distance
+from openquake.sub.cross_sections import CrossSection, CrossSectionData
+from openquake.sub.cross_sections import get_min_distance
 
 from openquake.hazardlib.geo.point import Point
 from openquake.hazardlib.geo.line import Line

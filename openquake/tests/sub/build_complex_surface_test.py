@@ -3,8 +3,8 @@ import os
 import shutil
 import unittest
 
-from oq.hmtk.subduction.build_complex_surface import build_complex_surface
-from oq.hmtk.subduction.create_2pt5_model import read_profiles_csv
+from openquake.sub.build_complex_surface import build_complex_surface
+from openquake.sub.create_2pt5_model import read_profiles_csv
 
 
 DATA_PATH = os.path.join(os.path.dirname(__file__), 'data')
