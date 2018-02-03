@@ -65,7 +65,6 @@ class ReadProfilesTest(unittest.TestCase):
         """
         sps, dmin, dmax = read_profiles_csv(CS_DATA_PATH)
         # check the minimum and maximum depths computed
-        print(dmin)
         assert dmin == 0
         assert dmax == 40.0
         expected_keys = ['003', '004']

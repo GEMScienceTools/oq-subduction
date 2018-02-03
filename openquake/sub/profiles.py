@@ -67,7 +67,6 @@ class ProfileSet():
             # Profile ID
             fname = Path(os.path.basename(filename)).stem
             sid = re.sub('^cs_', '', fname)
-            print(sid)
             sid = '%03d' % int(sid)
         return cls(lines)
 
