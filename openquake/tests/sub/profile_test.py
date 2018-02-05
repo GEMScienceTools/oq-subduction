@@ -1,10 +1,8 @@
 
 import os
-import numpy as np
 import unittest
 
-from oq.hmtk.subduction.profiles import ProfileSet
-from openquake.hazardlib.geo.geodetic import distance
+from openquake.sub.profiles import ProfileSet
 
 
 class ProfileTest(unittest.TestCase):
@@ -24,9 +22,3 @@ class ProfileTest(unittest.TestCase):
         """
         prfs = ProfileSet.from_files(self.dname_profile)
         self.assertEqual(27, len(prfs.profiles))
-        assert 0 == 1
-
-    def test_cubic_spline(self):
-        """
-        Create and use a cubic spline interpolator
-        """

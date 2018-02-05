@@ -1,20 +1,16 @@
+sudo: false
+
 language: python
+
+cache: pip
 
 python:
  - "3.5"
 
-addons:
-  apt:
-    packages:
-    - git
-
 install:
-  # Clone oq-engine
-  - git clone -q --depth=1 https://github.com/gem/oq-engine.git
-  # Install oq-engine dependencies
-  - pip -q install -r oq-engine/requirements-py35-linux64.txt
-  # Install package dependencies
-  - pip install -r requirements.txt
+  - pip install openquake.engine
+  - pip install http://cdn.ftp.openquake.org/wheelhouse/linux/py35/pyproj-1.9.5.1-cp35-cp35m-manylinux1_x86_64.whl
+  - pip install .
 
 script:
-  - nosetests -vx oq/hmtk/tests
+  - nosetests -vsx 

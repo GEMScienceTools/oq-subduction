@@ -38,7 +38,6 @@ class EdgesSet():
         """
         lines = []
         for filename in sorted(glob.glob(os.path.join(fname, 'edge*.csv'))):
-            print(filename)
             tmp = numpy.loadtxt(filename)
             pnts = []
             for i in range(tmp.shape[0]):

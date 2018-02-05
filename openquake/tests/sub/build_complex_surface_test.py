@@ -3,8 +3,8 @@ import os
 import shutil
 import unittest
 
-from oq.hmtk.subduction.build_complex_surface import build_complex_surface
-from oq.hmtk.subduction.create_2pt5_model import read_profiles_csv
+from openquake.sub.build_complex_surface import build_complex_surface
+from openquake.sub.create_2pt5_model import read_profiles_csv
 
 
 DATA_PATH = os.path.join(os.path.dirname(__file__), 'data')
@@ -50,13 +50,3 @@ class GetCrustalModelTest(unittest.TestCase):
         #
         self.assertEqual(odmin, edmin)
         assert odmax > edmax
-
-        """
-        def test_nesw_cross_section(self):
-            cs = CrossSection(45.0, 45.0, [100], [45])
-            csd = CrossSectionData(cs)
-            csd.set_crust1pt0_moho_depth(CRUST_DATA_PATH, bffer=200.)
-            expected = [[44.5, 46.5], [45.5, 45.5], [45.5, 44.5], [46.5, 44.5]]
-            print(csd.moho[:, 0:2])
-            numpy.testing.assert_equal(expected, csd.moho[:, 0:2])
-        """

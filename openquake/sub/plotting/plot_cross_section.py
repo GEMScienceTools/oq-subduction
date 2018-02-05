@@ -16,9 +16,9 @@ from matplotlib.backend_bases import KeyEvent
 from matplotlib.patches import (Circle, Rectangle)
 from matplotlib.collections import PatchCollection
 
-from oq.hmtk.subduction.cross_sections import (CrossSection,
+from openquake.sub.cross_sections import (CrossSection,
                                                CrossSectionData)
-from oq.hmtk.subduction.utils import plot_planes_at, mecclass
+from openquake.sub.utils import plot_planes_at, mecclass
 
 from openquake.hazardlib.geo.geodetic import geodetic_distance
 from openquake.hazardlib.geo.geodetic import point_at

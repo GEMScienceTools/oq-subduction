@@ -5,8 +5,8 @@ import numpy
 import unittest
 
 from openquake.hmtk.seismicity.catalogue import Catalogue
-from oq.hmtk.subduction.cross_sections import CrossSection, CrossSectionData
-from oq.hmtk.subduction.cross_sections import get_min_distance
+from openquake.sub.cross_sections import CrossSection, CrossSectionData
+from openquake.sub.cross_sections import get_min_distance
 
 from openquake.hazardlib.geo.point import Point
 from openquake.hazardlib.geo.line import Line
@@ -33,7 +33,6 @@ class GetCrustalModelTest(unittest.TestCase):
         csd = CrossSectionData(cs)
         csd.set_crust1pt0_moho_depth(CRUST_DATA_PATH, bffer=200.)
         expected = [[44.5, 46.5], [45.5, 45.5], [45.5, 44.5], [46.5, 44.5]]
-        print(csd.moho[:, 0:2])
         numpy.testing.assert_equal(expected, csd.moho[:, 0:2])
 
     def test_ns_cross_section(self):
@@ -41,8 +40,6 @@ class GetCrustalModelTest(unittest.TestCase):
         csd = CrossSectionData(cs)
         csd.set_crust1pt0_moho_depth(CRUST_DATA_PATH, bffer=200.)
         expected = [[43.5, 45.5], [44.5, 45.5], [45.5, 45.5], [46.5, 45.5]]
-        print(csd.moho)
-        print(expected)
         numpy.testing.assert_equal(expected, csd.moho[:, 0:2])
 
     def test_idl_cross_section(self):
@@ -50,8 +47,6 @@ class GetCrustalModelTest(unittest.TestCase):
         csd = CrossSectionData(cs)
         csd.set_crust1pt0_moho_depth(CRUST_DATA_PATH_IDL, bffer=100.)
         expected = [[-179.5,-49.5],[-179.5,-50.5],[178.5,-49.5],[179.5,-49.5],[178.5,-50.5],[179.5,-50.5]]
-        print(csd.moho[:, 0:2])
-        print(expected)
         numpy.testing.assert_equal(expected,csd.moho[:, 0:2])
 
 
@@ -70,7 +65,6 @@ class GetCrustalModelTest(unittest.TestCase):
         csd = CrossSectionData(cs)
         csd.set_crust1pt0_moho_depth(CRUST_DATA_PATH, bffer=200.)
         expected = [[44.5, 46.5], [45.5, 45.5], [45.5, 44.5], [46.5, 44.5]]
-        print(csd.moho[:, 0:2])
         numpy.testing.assert_equal(expected, csd.moho[:, 0:2])
 
     def test_ns_cross_section(self):

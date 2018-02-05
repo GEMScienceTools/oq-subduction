@@ -5,7 +5,7 @@ import re
 import numpy as np
 import unittest
 
-from oq.hmtk.subduction.cross_sections import Trench
+from openquake.sub.cross_sections import Trench
 
 from openquake.hazardlib.geo.geodetic import distance
 

@@ -6,7 +6,7 @@ import unittest
 import shutil
 import tempfile
 
-from oq.hmtk.subduction.create_2pt5_model import (read_profiles_csv,
+from openquake.sub.create_2pt5_model import (read_profiles_csv,
                                                   get_profiles_length,
                                                   write_profiles_csv,
                                                   write_edges_csv,
@@ -65,7 +65,6 @@ class ReadProfilesTest(unittest.TestCase):
         """
         sps, dmin, dmax = read_profiles_csv(CS_DATA_PATH)
         # check the minimum and maximum depths computed
-        print(dmin)
         assert dmin == 0
         assert dmax == 40.0
         expected_keys = ['003', '004']

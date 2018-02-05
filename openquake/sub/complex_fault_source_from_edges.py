@@ -5,7 +5,7 @@ import sys
 
 
 from openquake.baselib import sap
-from oq.hmtk.subduction.edges_set import EdgesSet
+from openquake.sub.edges_set import EdgesSet
 
 from openquake.hazardlib.sourcewriter import write_source_model
 
