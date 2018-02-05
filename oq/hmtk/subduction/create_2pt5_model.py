@@ -6,9 +6,8 @@ import sys
 import glob
 import numpy
 
-from pyproj import Proj
 from pyproj import Geod
-from openquake.hazardlib.geo.geodetic import distance, point_at, azimuth
+from openquake.hazardlib.geo.geodetic import distance
 
 
 def get_profiles_length(sps):
@@ -141,10 +140,18 @@ def get_interpolated_profiles(sps, lengths, number_of_samples):
 
 
 def read_profiles_csv(foldername, upper_depth=0, lower_depth=1000,
-                      from_id=".*", to_id="-999999"):
+                      from_id=".*", to_id=".*"):
     """
-    :parameter str foldername:
+    :param str foldername:
         The name of the folder containing the set of digitized profiles
+    :param float upper_depth:
+        The depth from where to cut profiles
+    :param float lower_depth:
+        The depth until where to sample profiles
+    :param str from_id:
+        The profile key from where to read profiles (included)
+    :param str to_id:
+        The profile key until where to read profiles (included)
     """
     dmin = +1e100
     dmax = -1e100
@@ -152,29 +159,79 @@ def read_profiles_csv(foldername, upper_depth=0, lower_depth=1000,
     #
     # reading files
     read_file = False
-    for filename in glob.glob(os.path.join(foldername, 'cs*.csv')):
+    for filename in sorted(glob.glob(os.path.join(foldername, 'cs*.csv'))):
+        #
+        # get the filename ID
+        sid = re.sub('^cs_', '', re.split('\.', os.path.basename(filename))[0])
+        if not re.search('[a-zA-Z]', sid):
+            sid = '%03d' % int(sid)
+        if not from_id == '.*' and not re.search('[a-zA-Z]', from_id):
+            from_id = '%03d' % int(from_id)
+        if not to_id == '.*' and not re.search('[a-zA-Z]', to_id):
+            to_id = '%03d' % int(to_id)
         #
         # check the file key
-        if re.search(from_id, filename):
+        if (from_id == '.*') and (to_id == '.*'):
             read_file = True
-        elif re.search(to_id, filename):
+        elif (from_id == '.*') and (sid <= to_id):
+            read_file = True
+        elif (sid >= from_id) and (to_id == '.*'):
+            read_file = True
+        elif (sid >= from_id) and (sid <= to_id):
+            read_file = True
+        else:
             read_file = False
-
+        #
+        # reading data
         if read_file:
-            sid = re.sub('^cs_', '', re.split('\.',
-                                              os.path.basename(filename))[0])
-            if not re.search('[a-zA-Z]', sid):
-                sid = '%03d' % int(sid)
             tmpa = numpy.loadtxt(filename)
             #
             # selecting depths within the defined range
             j = numpy.nonzero((tmpa[:, 2] >= upper_depth) &
                               (tmpa[:, 2] <= lower_depth))
-            if len(j[0]):
-                sps[sid] = tmpa[j[0], :]
+            #
+            # upper depth
+            pntt = False
+            if len(j[0]) > 1 and min(j[0]) == 0:
+                # start from top
+                pass
+            else:
+                idx = min(j[0])
+                pntt = _get_point_at_depth(tmpa[idx-1, :], tmpa[idx, :],
+                                           upper_depth)
+            #
+            # upper depth
+            pntb = False
+            if len(j[0]) > 1 and max(j[0]) == len(tmpa[:, 2])-1:
+                # reached bottom
+                pass
+            else:
+                idx = max(j[0])
+                pntb = _get_point_at_depth(tmpa[idx, :], tmpa[idx+1, :],
+                                           lower_depth)
+            #
+            # final profile
+            if len(j[0]) > 1:
+                tmpl = tmpa[j[0], :].tolist()
+                if pntb:
+                    tmpl.append(pntb)
+                if pntt:
+                    tmpl = [pntt] + tmpl
+                #
+                # updating the output array for the current profile
+                sps[sid] = numpy.array(tmpl)
                 dmin = min(min(sps[sid][:, 2]), dmin)
                 dmax = max(max(sps[sid][:, 2]), dmax)
     return sps, dmin, dmax
+
+
+def _get_point_at_depth(coo1, coo2, depth):
+    g = Geod(ellps='WGS84')
+    az12, az21, dist = g.inv(coo1[0], coo1[1], coo2[0], coo2[1])
+    grad = (dist*1e-3) / (coo2[2] - coo1[2])
+    dx = (depth - coo1[2]) * grad * 1e3
+    lon, lat, _ = g.fwd(coo1[0], coo1[1], az12, dx)
+    return [lon, lat, depth]
 
 
 def write_profiles_csv(sps, foldername):

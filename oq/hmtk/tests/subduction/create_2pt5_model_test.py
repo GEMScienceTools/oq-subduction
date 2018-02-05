@@ -59,12 +59,13 @@ class WriteProfilesEdgesTest(unittest.TestCase):
 
 class ReadProfilesTest(unittest.TestCase):
 
-    def test_read_profiles(self):
+    def test_read_profiles_01(self):
         """
         Test reading a profile file
         """
         sps, dmin, dmax = read_profiles_csv(CS_DATA_PATH)
         # check the minimum and maximum depths computed
+        print(dmin)
         assert dmin == 0
         assert dmax == 40.0
         expected_keys = ['003', '004']
@@ -77,6 +78,26 @@ class ReadProfilesTest(unittest.TestCase):
                              [10.5, 45.5, 25.],
                              [10.7, 45.7, 40.]])
         np.testing.assert_allclose(sps['003'], expected, rtol=2)
+
+    def read_profiles_02(self):
+        """
+        Read CAM profiles
+        """
+        sps, dmin, dmax = read_profiles_csv(CAM_DATA_PATH, upper_depth=0,
+                                            lower_depth=1000, from_id="13",
+                                            to_id="32")
+
+    def test_read_profiles_03(self):
+        """
+        Read CAM profiles
+        """
+        lower_depth = 30
+        upper_depth = 20
+        sps, dmin, dmax = read_profiles_csv(CAM_DATA_PATH, upper_depth,
+                                            lower_depth, from_id="13",
+                                            to_id="32")
+        assert dmin >= upper_depth
+        assert dmax <= lower_depth
 
 
 class GetProfilesLengthTest(unittest.TestCase):
