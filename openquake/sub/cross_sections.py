@@ -48,13 +48,6 @@ class CrossSectionData:
         """
         print('setting catalogue')
         na,na,na,na,qual = self.csec.get_mm()
-        dep = catalogue.data['depth']
-        ids = numpy.nonzero((dep != 33.) & (dep != 10.) & (dep != 35.))
-        boo = numpy.zeros_like(catalogue.data['depth'], dtype=int)
-        boo[ids] = 1
-        selector = CatalogueSelector(catalogue, create_copy=True)
-        newcat = selector.select_catalogue(boo)
-        catalogue = newcat
 
         if qual==1:
             idxs = self.csec.get_eqks_within_buffer_idl(catalogue, bffer)
@@ -66,6 +59,7 @@ class CrossSectionData:
         newcat = selector.select_catalogue(boo)
         self.ecat = newcat
 
+#    def set_slab1pt0(self, filename, bffer=5.5):
     def set_slab1pt0(self, filename, bffer=2.0):
         """
         :parameter filename:
@@ -181,14 +175,6 @@ class CrossSectionData:
         print('setting gcmt')
         parser = ParseNDKtoGCMT(filename)
         cmt_cat = parser.read_file()
-        dep = cmt_cat.data['depth']
-	#filter out depths that are fixed
-        ids = numpy.nonzero((dep != 33.) & (dep != 10.))
-        boo = numpy.zeros_like(cmt_cat.data['depth'], dtype=int)
-        boo[ids] = 1
-        selector = CatalogueSelector(cmt_cat, create_copy=True)
-        newcat = selector.select_catalogue(boo)
-        cmt_cat = newcat
         loc = cmt_cat.data['longitude']
         lac = cmt_cat.data['latitude']
 
