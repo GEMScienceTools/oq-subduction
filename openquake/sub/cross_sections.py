@@ -59,7 +59,6 @@ class CrossSectionData:
         newcat = selector.select_catalogue(boo)
         self.ecat = newcat
 
-#    def set_slab1pt0(self, filename, bffer=5.5):
     def set_slab1pt0(self, filename, bffer=2.0):
         """
         :parameter filename:
