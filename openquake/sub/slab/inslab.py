@@ -133,18 +133,6 @@ def _read_edge(filename):
     return Line(points)
 
 
-def _resample_edge(xs, ys, zs, spacing):
-    """
-    """
-    pass
-
-
-def _get_plane_equation(ix, iy, mesh):
-    """
-    """
-    pass
-
-
 def create_planar_mesh(orig, ppar, spacing, lenght, width):
     """
     :parameter orig:
@@ -434,12 +422,6 @@ def create_ruptures(folder, mesh_spacing, slab_thickness, h_grid_spacing,
     grd = Grid3d(minlo, minla, minde, maxlo, maxla, maxde, h_grid_spacing,
                  v_grid_spacing)
     gx, gy, gz = grd.select_nodes_within_two_meshes(surface.mesh, lower_mesh)
-
-    #
-    # create ruptures
-    from openquake.hazardlib.mfd import TruncatedGRMFD
-    mfd = TruncatedGRMFD(6.0, 7.0, 0.1, 2.0, 1.0)
-
     #
     #
     return surface.mesh, lower_mesh, gx, gy, gz, grd

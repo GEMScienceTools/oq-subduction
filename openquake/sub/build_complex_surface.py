@@ -6,10 +6,10 @@ import numpy
 from openquake.baselib import sap
 
 from openquake.sub.create_2pt5_model import (read_profiles_csv,
-                                                  get_profiles_length,
-                                                  get_interpolated_profiles,
-                                                  write_edges_csv,
-                                                  write_profiles_csv)
+                                             get_profiles_length,
+                                             get_interpolated_profiles,
+                                             write_edges_csv,
+                                             write_profiles_csv)
 
 
 def build_complex_surface(in_path, max_sampl_dist, out_path, upper_depth=0,
@@ -38,6 +38,7 @@ def build_complex_surface(in_path, max_sampl_dist, out_path, upper_depth=0,
     # read profiles
     sps, dmin, dmax = read_profiles_csv(in_path, upper_depth, lower_depth,
                                         from_id, to_id)
+    print('Number of profiles: {:d}'.format(len(sps)))
     #
     # compute length of profiles
     lengths, longest_key, shortest_key = get_profiles_length(sps)

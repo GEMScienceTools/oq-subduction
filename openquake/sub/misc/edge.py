@@ -300,7 +300,8 @@ def create_from_profiles(profiles, profile_sd, edge_sd, align=False):
     rprofiles = []
     for prf in profiles:
         rprofiles.append(_resample_profile(prf, profile_sd))
-    logging.info('Completed reading profiles')
+    tmps = 'Completed reading ({:d} loaded)'.format(len(rprofiles))
+    logging.info(tmps)
     #
     # set the reference profile i.e. the longest one
     ref_idx = None
@@ -313,7 +314,8 @@ def create_from_profiles(profiles, profile_sd, edge_sd, align=False):
     if ref_idx is not None:
         logging.info('Reference profile is # {:d}'.format(ref_idx))
     else:
-        logging.info('Reference profile undefined')
+        tmps = 'Reference profile undefined. # profiles: {:d}'
+        logging.info(tmps.format(len(rprofiles)))
     #
     # -- CHECK --
     # check that in each profile the points are equally spaced

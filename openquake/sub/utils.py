@@ -209,7 +209,6 @@ def _get_array(tedges):
     """
     :parameter list tedges:
         A list of :class:`openquake.hazardlib.geo.line.Line` instances
-    :return:
     """
     edges = np.zeros((len(tedges), len(tedges[0]), 3))
     for i, edge in enumerate(tedges):
@@ -223,6 +222,7 @@ def _get_array(tedges):
 def _check_edges(edges):
     """
     This checks that all the edges follow the right hand rule
+
     :param list edges:
         The list of edges to be analysed.
     :return:
@@ -236,6 +236,16 @@ def _check_edges(edges):
         pnts += [[pnt.longitude, pnt.latitude, pnt.depth] for pnt in
                  edge.points]
     pnts = np.array(pnts)
+    #
+    # first two points
+    fpnt = []
+    for edge in edges:
+        fpnts += [[pnt.longitude, pnt.latitude, pnt.depth] for pnt in
+                   edge.points[0:1]]
+    #
+    #
+    decreasing = True
+
     #
     # projecting the points
     p = Proj('+proj=lcc +lon_0={:f}'.format(np.mean(pnts[:, 0])))

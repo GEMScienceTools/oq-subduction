@@ -9,7 +9,7 @@ from pyproj import Proj
 from scipy.interpolate import griddata
 from shapely.geometry import Point
 
-from ccar18.utils.alpha_shape import alpha_shape
+from openquake.sub.misc.alpha_shape import alpha_shape
 
 
 def generator_function(mesh):
@@ -91,6 +91,14 @@ class Grid3d():
                           inverse=True)
         self.gridlo = np.reshape(tlo, shp)
         self.gridla = np.reshape(tla, shp)
+
+    def get_coordinates_vectors(self):
+        """
+        This returns three vectors containing the coordinates for all the nodes
+        of the 3D grid
+        """
+        return (self.gridlo.flatten(), self.gridla.flatten(),
+                self.gridz.flatten())
 
     def select_nodes_within_two_meshesa(self, meshup, meshlo):
         """

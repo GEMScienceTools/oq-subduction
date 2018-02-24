@@ -195,6 +195,8 @@ def read_profiles_csv(foldername, upper_depth=0, lower_depth=1000,
             if len(j[0]) > 1 and min(j[0]) == 0:
                 # start from top
                 pass
+            elif max(tmpa[:, 2]) < upper_depth:
+                continue
             else:
                 idx = min(j[0])
                 pntt = _get_point_at_depth(tmpa[idx-1, :], tmpa[idx, :],

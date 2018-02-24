@@ -20,11 +20,12 @@ from openquake.sub.misc.utils import (get_min_max, read_profiles,
 from openquake.sub.slab.rupture_utils import (get_discrete_dimensions,
                                               get_ruptures, get_weights)
 
-from openquake.hazardlib.scalerel import get_available_scalerel
+from openquake.baselib import sap
 from openquake.hazardlib.mfd import TruncatedGRMFD
-from openquake.hazardlib.geo.surface.gridded import GriddedSurface
 from openquake.hazardlib.geo.mesh import Mesh
+from openquake.hazardlib.scalerel import get_available_scalerel
 from openquake.hmtk.seismicity.selector import CatalogueSelector
+from openquake.hazardlib.geo.surface.gridded import GriddedSurface
 
 from oqmbt.tools.smooth3d import Smoothing3D
 
@@ -332,11 +333,15 @@ def dict_of_floats_from_string(istr):
     return out
 
 
-def main(argv):
+def create_ruptures(ini_fname):
+    """
+    :param str ini_fname:
+        The name of a .ini file
+    """
     #
     # read config file
     config = configparser.ConfigParser()
-    config.readfp(open(argv[0]))
+    config.readfp(open(ini_fname))
     #
     # logging settings
     log_fname = None
@@ -408,8 +413,10 @@ def main(argv):
 
     # ------------------------------------------------------------------------
     #
+    print('profile_folder:', path)
     profiles, pro_fnames = read_profiles(path)
     #
+    """
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         import matplotlib.pyplot as plt
         from mpl_toolkits.mplot3d import Axes3D
@@ -424,6 +431,7 @@ def main(argv):
         ax.invert_zaxis()
         ax.view_init(50, 55)
         plt.show()
+    """
     #
     # create mesh from profiles
     msh = create_from_profiles(profiles, profile_sd=profile_sd_topsl,
@@ -435,18 +443,21 @@ def main(argv):
     # lower mesh
     lmsh = create_lower_surface_mesh(msh, slab_thickness)
     #
-    # get min and ma values
+    # get min and max values
     milo, mila, mide, malo, mala, made = get_min_max(msh, lmsh)
     #
     # discretizing the slab
-    omsh = Mesh(msh[:, :, 0], msh[:, :, 1], msh[:, :, 2])
-    olmsh = Mesh(lmsh[:, :, 0], lmsh[:, :, 1], lmsh[:, :, 2])
+    # omsh = Mesh(msh[:, :, 0], msh[:, :, 1], msh[:, :, 2])
+    # olmsh = Mesh(lmsh[:, :, 0], lmsh[:, :, 1], lmsh[:, :, 2])
+
     #
     # this `dlt` value [in degrees] is used to create a buffer around the mesh
     dlt = 5.0
     msh3d = Grid3d(milo-dlt, mila-dlt, mide, malo+dlt, mala+dlt, made, hspa,
                    vspa)
-    mlo, mla, mde = msh3d.select_nodes_within_two_meshesa(omsh, olmsh)
+    # mlo, mla, mde = msh3d.select_nodes_within_two_meshesa(omsh, olmsh)
+    mlo, mla, mde = msh3d.get_coordinates_vectors()
+
     #
     # save data on hdf5 file
     if os.path.exists(hdf5_filename):
@@ -476,6 +487,17 @@ def main(argv):
     allrup = create_ruptures(mfd, dips, sampling, msr, asprs, float_strike,
                              float_dip, r, values, oms, 1., hdf5_filename,
                              uniform_fraction, proj)
+
+
+def main(argv):
+
+    p = sap.Script(create_ruptures)
+    p.arg(name='ini_fname', help='.ini filename')
+
+    if len(argv) < 1:
+        print(p.help())
+    else:
+        p.callfunc()
 
 
 if __name__ == "__main__":
