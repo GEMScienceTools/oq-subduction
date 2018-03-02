@@ -187,6 +187,7 @@ def read_profiles_csv(foldername, upper_depth=0, lower_depth=1000,
             tmpa = numpy.loadtxt(filename)
             #
             # selecting depths within the defined range
+            print(type(upper_depth))
             j = numpy.nonzero((tmpa[:, 2] >= upper_depth) &
                               (tmpa[:, 2] <= lower_depth))
             #

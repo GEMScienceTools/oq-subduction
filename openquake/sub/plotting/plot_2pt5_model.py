@@ -30,7 +30,7 @@ def plot_catalogue(filename, axes, lims, qual):
     idx = numpy.nonzero((lo > lims[0]) & (lo < lims[1]) &
                         (la > lims[2]) & (la < lims[3]) &
                         (de > lims[4]) & (de < lims[5]))
-    axes.plot(lo[idx], la[idx], de[idx], 'o', alpha=0.5)
+    #axes.plot(lo[idx], la[idx], de[idx], '.', alpha=0.5)
 
 def plot_sub_profiles(foldername):
     """

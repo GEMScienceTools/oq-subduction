@@ -36,7 +36,9 @@ def build_complex_surface(in_path, max_sampl_dist, out_path, upper_depth=0,
         exit(0)
     #
     # read profiles
-    sps, dmin, dmax = read_profiles_csv(in_path, upper_depth, lower_depth,
+    sps, dmin, dmax = read_profiles_csv(in_path,
+                                        float(upper_depth),
+                                        float(lower_depth),
                                         from_id, to_id)
     #
     # compute length of profiles
@@ -49,7 +51,7 @@ def build_complex_surface(in_path, max_sampl_dist, out_path, upper_depth=0,
     print('Depth max: {:.2f}'.format(dmax))
     #
     #
-    number_of_samples = numpy.ceil(lengths[longest_key] / max_sampl_dist)
+    number_of_samples = numpy.ceil(lengths[longest_key]/float(max_sampl_dist))
     print('Number of subsegments for each profile:', number_of_samples)
     tmp = lengths[shortest_key]/number_of_samples
     print('Shortest sampling [%s]: %.4f' % (shortest_key, tmp))

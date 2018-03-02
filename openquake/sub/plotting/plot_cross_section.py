@@ -568,7 +568,7 @@ def plt_cs(olo, ola, depp, lnght, strike, ids, ini_filename):
         csda.set_slab1pt0(fname_slab)
     csda.set_crust1pt0_moho_depth(fname_crust)
     csda.set_gcmt(fname_gcmt)
-    csda.set_topo(fname_topo)
+    #csda.set_topo(fname_topo)
     csda.set_litho_moho_depth(fname_litho)
     csda.set_volcano(fname_volc)
 
