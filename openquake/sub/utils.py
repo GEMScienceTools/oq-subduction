@@ -37,28 +37,28 @@ def mecclass(plungt, plungb, plungp):
     T = plunges[2]
     maxplung, axis = plunges.max(0), plunges.argmax(0)
     if maxplung >= 67.5:
-            if axis == 0:  # P max
-                    clase = 'N'  # normal faulting
-            elif axis == 1:  # B max
-                    clase = 'SS'  # strike-slip faulting
-            elif axis == 2:  # T max
-                    clase = 'R'  # reverse faulting
+        if axis == 0:  # P max
+                clase = 'N'  # normal faulting
+        elif axis == 1:  # B max
+                clase = 'SS'  # strike-slip faulting
+        elif axis == 2:  # T max
+                clase = 'R'  # reverse faulting
     else:
-            if axis == 0:  # P max
-                    if B > T:
-                            clase = 'N-SS'  # normal - strike-slip faulting
-                    else:
-                            clase = 'N'  # normal faulting
-            if axis == 1:  # B max
-                    if P > T:
-                            clase = 'SS-N'  # strike-slip - normal faulting
-                    else:
-                            clase = 'SS-R'  # strike-slip - reverse faulting
-            if axis == 2:  # T max
-                    if B > P:
-                            clase = 'R-SS'  # reverse - strike-slip faulting
-                    else:
-                            clase = 'R'  # reverse faulting
+        if axis == 0:  # P max
+            if B > T:
+                clase = 'N-SS'  # normal - strike-slip faulting
+            else:
+                clase = 'N'  # normal faulting
+        if axis == 1:  # B max
+            if P > T:
+                clase = 'SS-N'  # strike-slip - normal faulting
+            else:
+                clase = 'SS-R'  # strike-slip - reverse faulting
+        if axis == 2:  # T max
+            if B > P:
+                clase = 'R-SS'  # reverse - strike-slip faulting
+            else:
+                clase = 'R'  # reverse faulting
     return clase
 
 
@@ -251,8 +251,10 @@ def _check_edges(edges):
     chks = []
     for edge in edges:
         epnts = np.array([[pnt.longitude, pnt.latitude, pnt.depth] for pnt in
-                          edge.points])
+                          edge.points[0:2]])
         ex, ey = p(epnts[:, 0], epnts[:, 1])
+        ex = ex / 1e3
+        ey = ey / 1e3
         #
         # checking edge direction Vs plane perpendicular
         edgv = np.array([np.diff(ex[0:2])[0], np.diff(ey[0:2])[0]])
@@ -279,7 +281,7 @@ def build_complex_surface_from_edges(foldername):
     # fix edges
     if np.any(chks > 0.):
         for i, chk in enumerate(chks):
-            if chk > 0:
+            if chk < 0:
                 edge = tedges[i]
                 tedges[i].points = edge.points[::-1]
                 print('flipping')

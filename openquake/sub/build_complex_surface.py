@@ -2,14 +2,15 @@
 
 import sys
 import numpy
+import logging
 
 from openquake.baselib import sap
 
 from openquake.sub.create_2pt5_model import (read_profiles_csv,
-                                                  get_profiles_length,
-                                                  get_interpolated_profiles,
-                                                  write_edges_csv,
-                                                  write_profiles_csv)
+                                             get_profiles_length,
+                                             get_interpolated_profiles,
+                                             write_edges_csv,
+                                             write_profiles_csv)
 
 
 def build_complex_surface(in_path, max_sampl_dist, out_path, upper_depth=0,
@@ -32,7 +33,7 @@ def build_complex_surface(in_path, max_sampl_dist, out_path, upper_depth=0,
         tmps = '\nError: the input folder cannot be also the output one\n'
         tmps += '    input : {0:s}\n'.format(in_path)
         tmps += '    output: {0:s}\n'.format(out_path)
-        print(tmps)
+        logging.warning(tmps.format(lab, len(allrup[lab])))
         exit(0)
     #
     # read profiles
@@ -40,23 +41,25 @@ def build_complex_surface(in_path, max_sampl_dist, out_path, upper_depth=0,
                                         float(upper_depth),
                                         float(lower_depth),
                                         from_id, to_id)
+    logging.info('Number of profiles: {:d}'.format(len(sps)))
     #
     # compute length of profiles
     lengths, longest_key, shortest_key = get_profiles_length(sps)
-    print('Longest profile (id: {:s}): {:2f}'.format(longest_key,
+    logging.info('Longest profile (id: {:s}): {:2f}'.format(longest_key,
                                                      lengths[longest_key]))
-    print('Shortest profile (id: {:s}): {:2f}'.format(shortest_key,
+    logging.info('Shortest profile (id: {:s}): {:2f}'.format(shortest_key,
                                                       lengths[shortest_key]))
-    print('Depth min: {:.2f}'.format(dmin))
-    print('Depth max: {:.2f}'.format(dmax))
+    logging.info('Depth min: {:.2f}'.format(dmin))
+    logging.info('Depth max: {:.2f}'.format(dmax))
     #
     #
-    number_of_samples = numpy.ceil(lengths[longest_key]/float(max_sampl_dist))
-    print('Number of subsegments for each profile:', number_of_samples)
+    number_of_samples = numpy.ceil(lengths[longest_key] / max_sampl_dist)
+    tmps = 'Number of subsegments for each profile: {:d}'
+    logging.info(tmps.format(int(number_of_samples)))
     tmp = lengths[shortest_key]/number_of_samples
-    print('Shortest sampling [%s]: %.4f' % (shortest_key, tmp))
+    logging.info('Shortest sampling [%s]: %.4f' % (shortest_key, tmp))
     tmp = lengths[longest_key]/number_of_samples
-    print('Longest sampling  [%s]: %.4f' % (longest_key, tmp))
+    logging.info('Longest sampling  [%s]: %.4f' % (longest_key, tmp))
     #
     # resampled profiles
     rsps = get_interpolated_profiles(sps, lengths, number_of_samples)
