@@ -37,7 +37,9 @@ def build_complex_surface(in_path, max_sampl_dist, out_path, upper_depth=0,
         exit(0)
     #
     # read profiles
-    sps, dmin, dmax = read_profiles_csv(in_path, upper_depth, lower_depth,
+    sps, dmin, dmax = read_profiles_csv(in_path,
+                                        float(upper_depth),
+                                        float(lower_depth),
                                         from_id, to_id)
     logging.info('Number of profiles: {:d}'.format(len(sps)))
     #
