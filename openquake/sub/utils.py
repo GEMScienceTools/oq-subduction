@@ -37,28 +37,28 @@ def mecclass(plungt, plungb, plungp):
     T = plunges[2]
     maxplung, axis = plunges.max(0), plunges.argmax(0)
     if maxplung >= 67.5:
-            if axis == 0:  # P max
-                    clase = 'N'  # normal faulting
-            elif axis == 1:  # B max
-                    clase = 'SS'  # strike-slip faulting
-            elif axis == 2:  # T max
-                    clase = 'R'  # reverse faulting
+        if axis == 0:  # P max
+                clase = 'N'  # normal faulting
+        elif axis == 1:  # B max
+                clase = 'SS'  # strike-slip faulting
+        elif axis == 2:  # T max
+                clase = 'R'  # reverse faulting
     else:
-            if axis == 0:  # P max
-                    if B > T:
-                            clase = 'N-SS'  # normal - strike-slip faulting
-                    else:
-                            clase = 'N'  # normal faulting
-            if axis == 1:  # B max
-                    if P > T:
-                            clase = 'SS-N'  # strike-slip - normal faulting
-                    else:
-                            clase = 'SS-R'  # strike-slip - reverse faulting
-            if axis == 2:  # T max
-                    if B > P:
-                            clase = 'R-SS'  # reverse - strike-slip faulting
-                    else:
-                            clase = 'R'  # reverse faulting
+        if axis == 0:  # P max
+            if B > T:
+                clase = 'N-SS'  # normal - strike-slip faulting
+            else:
+                clase = 'N'  # normal faulting
+        if axis == 1:  # B max
+            if P > T:
+                clase = 'SS-N'  # strike-slip - normal faulting
+            else:
+                clase = 'SS-R'  # strike-slip - reverse faulting
+        if axis == 2:  # T max
+            if B > P:
+                clase = 'R-SS'  # reverse - strike-slip faulting
+            else:
+                clase = 'R'  # reverse faulting
     return clase
 
 
@@ -209,6 +209,7 @@ def _get_array(tedges):
     """
     :parameter list tedges:
         A list of :class:`openquake.hazardlib.geo.line.Line` instances
+    :return:
     """
     edges = np.zeros((len(tedges), len(tedges[0]), 3))
     for i, edge in enumerate(tedges):
@@ -222,7 +223,6 @@ def _get_array(tedges):
 def _check_edges(edges):
     """
     This checks that all the edges follow the right hand rule
-
     :param list edges:
         The list of edges to be analysed.
     :return:
@@ -236,16 +236,6 @@ def _check_edges(edges):
         pnts += [[pnt.longitude, pnt.latitude, pnt.depth] for pnt in
                  edge.points]
     pnts = np.array(pnts)
-    #
-    # first two points
-    fpnt = []
-    for edge in edges:
-        fpnts += [[pnt.longitude, pnt.latitude, pnt.depth] for pnt in
-                   edge.points[0:1]]
-    #
-    #
-    decreasing = True
-
     #
     # projecting the points
     p = Proj('+proj=lcc +lon_0={:f}'.format(np.mean(pnts[:, 0])))
@@ -261,8 +251,10 @@ def _check_edges(edges):
     chks = []
     for edge in edges:
         epnts = np.array([[pnt.longitude, pnt.latitude, pnt.depth] for pnt in
-                          edge.points])
+                          edge.points[0:2]])
         ex, ey = p(epnts[:, 0], epnts[:, 1])
+        ex = ex / 1e3
+        ey = ey / 1e3
         #
         # checking edge direction Vs plane perpendicular
         edgv = np.array([np.diff(ex[0:2])[0], np.diff(ey[0:2])[0]])
@@ -289,7 +281,7 @@ def build_complex_surface_from_edges(foldername):
     # fix edges
     if np.any(chks > 0.):
         for i, chk in enumerate(chks):
-            if chk > 0:
+            if chk < 0:
                 edge = tedges[i]
                 tedges[i].points = edge.points[::-1]
                 print('flipping')

@@ -443,7 +443,8 @@ def get_mesh_back(pfs, rfi, sd):
     :returns:
 
     """
-    print('Number of profiles: {:d}'.format(len(pfs)))
+    tmps = 'Number of profiles: {:d}'
+    logging.info(tmps.format(len(pfs)))
     #
     # projection
     g = Geod(ellps='WGS84')
@@ -533,9 +534,12 @@ def get_mesh_back(pfs, rfi, sd):
                     #
                     # >>> TOLERANCE
                     if abs(d-sd) > TOL*sd:
-                        print('d:', d, 'diff:', d-sd, 'tol', TOL*sd, 'sd', sd)
-                        print('residual', rdist[k])
-
+                        tmpf = 'd: {:f} diff: {:f} tol: {:f} sd:{:f}'
+                        tmpf += '\nresidual: {:f}'
+                        tmps = tmpf.format(d, d-sd,  TOL*sd, sd, rdist[k])
+                        logging.warning(tmps)
+                        #
+                        # plotting
                         if 1:
                             fig = plt.figure(figsize=(10, 8))
                             ax = fig.add_subplot(111, projection='3d')
@@ -657,8 +661,8 @@ def get_mesh(pfs, rfi, sd):
                           pr[k, 0], pr[k, 1], pl[k, 2])
             # >>> TOLERANCE
             if abs(dd-tdist) > 0.5*tdist:
-                print('Distances:', dd, tdist)
-                raise ValueError('')
+                tmps = 'Distances: {:f} {:f}'
+                raise ValueError(tmps.format(dd, tdist))
             #
             # adding new points along the edge with index k
             for j, dst in enumerate(range(ndists)):
@@ -683,9 +687,12 @@ def get_mesh(pfs, rfi, sd):
 
                     # >>> TOLERANCE
                     if abs(d-sd) > TOL*sd:
-                        print('d:', d, 'diff:', d-sd, 'tol', TOL*sd, 'sd', sd)
-                        print('residual', rdist[k])
-
+                        tmpf = 'd: {:f} diff: {:f} tol: {:f} sd:{:f}'
+                        tmpf += '\nresidual: {:f}'
+                        tmps = tmpf.format(d, d-sd,  TOL*sd, sd, rdist[k])
+                        logging.warning(tmps)
+                        #
+                        # plotting
                         if 1:
                             fig = plt.figure(figsize=(10, 8))
                             ax = fig.add_subplot(111, projection='3d')

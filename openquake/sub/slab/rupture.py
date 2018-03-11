@@ -252,7 +252,8 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
             if np.isfinite(wei):
                 smm += wei
         twei[lab] = smm
-        print('Total weight {:s}: {:f}'.format(lab, twei[lab]))
+        tmps = 'Total weight {:s}: {:f}'
+        logging.info(tmps.format(lab, twei[lab]))
     #
     # generate and store the final set of ruptures
     fh5 = h5py.File(hdf5_filename, 'a')
@@ -333,7 +334,7 @@ def dict_of_floats_from_string(istr):
     return out
 
 
-def create_ruptures(ini_fname):
+def calculate_ruptures(ini_fname, ref_fdr=None):
     """
     :param str ini_fname:
         The name of a .ini file
@@ -344,18 +345,11 @@ def create_ruptures(ini_fname):
     config.readfp(open(ini_fname))
     #
     # logging settings
-    log_fname = None
-    # log_fname = 'log.txt'
-    if log_fname is not None:
-        logging.basicConfig(filename=log_fname,
-                            format='rupture:%(levelname)s:%(message)s',
-                            level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO,
-                            format='rupture:%(levelname)s:%(message)s')
+    logging.basicConfig(format='rupture:%(levelname)s:%(message)s')
     #
     # reference folder
-    ref_fdr = config.get('main', 'reference_folder')
+    if ref_fdr is None:
+        ref_fdr = config.get('main', 'reference_folder')
     #
     # set parameters
     profile_sd_topsl = config.getfloat('main', 'profile_sd_topsl')
@@ -413,7 +407,6 @@ def create_ruptures(ini_fname):
 
     # ------------------------------------------------------------------------
     #
-    print('profile_folder:', path)
     profiles, pro_fnames = read_profiles(path)
     #
     """
@@ -457,7 +450,6 @@ def create_ruptures(ini_fname):
                    vspa)
     # mlo, mla, mde = msh3d.select_nodes_within_two_meshesa(omsh, olmsh)
     mlo, mla, mde = msh3d.get_coordinates_vectors()
-
     #
     # save data on hdf5 file
     if os.path.exists(hdf5_filename):
@@ -491,8 +483,9 @@ def create_ruptures(ini_fname):
 
 def main(argv):
 
-    p = sap.Script(create_ruptures)
+    p = sap.Script(calculate_ruptures)
     p.arg(name='ini_fname', help='.ini filename')
+    p.arg(name='reference_folder', help='Reference folder for paths')
 
     if len(argv) < 1:
         print(p.help())
