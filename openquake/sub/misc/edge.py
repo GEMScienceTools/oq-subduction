@@ -711,9 +711,10 @@ def get_mesh(pfs, rfi, sd):
                                 tmp = np.array(tmp)
                                 tmplon = tmp[:,0]
                                 tmplon = ([x+360 if x<0 else x for x in tmplon])
+                                tmplon0 = tmplon[0]
                                 ax.plot(tmplon, tmp[:, 1], tmp[:, 2],
                                         'x--b', markersize=2)
-                                ax.text(tmplon[0, 0], tmp[0, 1], tmp[0, 2],
+                                ax.text(tmplon0, tmp[0, 1], tmp[0, 2],
                                         '{:d}'.format(ipro))
                             for pro in npr:
                                 tmp = [[p[0], p[1], p[2]] for p in pro]
