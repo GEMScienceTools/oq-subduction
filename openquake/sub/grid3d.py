@@ -46,6 +46,9 @@ class Grid3d():
     def __init__(self, minlo, minla, minde, maxlo, maxla, maxde, hspa, vspa):
         """
         """
+        minlo = minlo+360 if minlo<0 else minlo
+        maxlo = maxlo+360 if maxlo<0 else maxlo
+
         self.minlo = minlo
         self.minla = minla
         self.minde = minde
@@ -112,9 +115,13 @@ class Grid3d():
         silo = rtree.index.Index(generator_function(meshlo))
         #
         # compute the concave hull for the top and bottom slab
-        ch_up, _ = alpha_shape(meshup.lons[idxs].flatten(),
+        lonsup = meshup.lons[idxs].flatten()
+        lonsup = ([x+360 if x<0 else x for x in lonsup])
+        lonslo = meshlo.lons[idxs].flatten()
+        lonslo = ([x+360 if x<0 else x for x in lonslo])
+        ch_up, _ = alpha_shape(lonsup,
                                meshup.lats[idxs].flatten(), 1.0)
-        ch_lo, _ = alpha_shape(meshlo.lons[idxs].flatten(),
+        ch_lo, _ = alpha_shape(lonslo,
                                meshlo.lats[idxs].flatten(), 1.0)
         #
         #
