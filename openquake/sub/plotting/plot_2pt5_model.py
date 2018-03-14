@@ -69,6 +69,13 @@ def plot_sub_profiles(foldername):
         sps[sid] = numpy.loadtxt(filename)
         plot_sub_profile(sid, dat, ax)
 
+        minlo = min(dat[:,0]) if minlo > min(dat[:,0]) else minlo
+        maxlo = max(dat[:,0]) if maxlo < max(dat[:,0]) else maxlo
+        minla = min(dat[:,1]) if minla > min(dat[:,1]) else minla
+        maxla = max(dat[:,1]) if maxla < max(dat[:,1]) else maxla
+        minde = min(dat[:,2]) if minde > min(dat[:,2]) else minde
+        maxde = max(dat[:,2]) if maxde < max(dat[:,2]) else maxde
+
     for filename in sorted(glob.glob(os.path.join(foldername, 'edge_*.csv'))):
         print (filename)
         dat = numpy.loadtxt(filename)
