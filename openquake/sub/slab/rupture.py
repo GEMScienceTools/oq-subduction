@@ -1,4 +1,5 @@
 # coding: utf-8
+
 import os
 import re
 import sys
@@ -19,11 +20,12 @@ from openquake.sub.misc.utils import (get_min_max, read_profiles,
 from openquake.sub.slab.rupture_utils import (get_discrete_dimensions,
                                               get_ruptures, get_weights)
 
-from openquake.hazardlib.scalerel import get_available_scalerel
-from openquake.hazardlib.mfd import TruncatedGRMFD, ArbitraryMFD
-from openquake.hazardlib.geo.surface.gridded import GriddedSurface
+from openquake.baselib import sap
+from openquake.hazardlib.mfd import TruncatedGRMFD
 from openquake.hazardlib.geo.mesh import Mesh
+from openquake.hazardlib.scalerel import get_available_scalerel
 from openquake.hmtk.seismicity.selector import CatalogueSelector
+from openquake.hazardlib.geo.surface.gridded import GriddedSurface
 
 from oqmbt.tools.smooth3d import Smoothing3D
 
@@ -171,7 +173,6 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
             #
             # create in-slab virtual fault - `lines` is the list of profiles
             # to be used for the construction of the virtual fault surface
-            print("THIS PLOT GEN. WHEN CREATING VIRTUAL FAULTS")
             smsh = create_from_profiles(lines, profile_sd=sampling,
                                         edge_sd=sampling)
             omsh = Mesh(smsh[:, :, 0], smsh[:, :, 1], smsh[:, :, 2])
@@ -251,7 +252,8 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
             if np.isfinite(wei):
                 smm += wei
         twei[lab] = smm
-        print('Total weight {:s}: {:f}'.format(lab, twei[lab]))
+        tmps = 'Total weight {:s}: {:f}'
+        logging.info(tmps.format(lab, twei[lab]))
     #
     # generate and store the final set of ruptures
     fh5 = h5py.File(hdf5_filename, 'a')
@@ -332,25 +334,22 @@ def dict_of_floats_from_string(istr):
     return out
 
 
-def main(argv):
+def calculate_ruptures(ini_fname, ref_fdr=None):
+    """
+    :param str ini_fname:
+        The name of a .ini file
+    """
     #
     # read config file
     config = configparser.ConfigParser()
-    config.readfp(open(argv[0]))
+    config.readfp(open(ini_fname))
     #
     # logging settings
-    log_fname = None
-    # log_fname = 'log.txt'
-    if log_fname is not None:
-        logging.basicConfig(filename=log_fname,
-                            format='rupture:%(levelname)s:%(message)s',
-                            level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO,
-                            format='rupture:%(levelname)s:%(message)s')
+    logging.basicConfig(format='rupture:%(levelname)s:%(message)s')
     #
     # reference folder
-    ref_fdr = config.get('main', 'reference_folder')
+    if ref_fdr is None:
+        ref_fdr = config.get('main', 'reference_folder')
     #
     # set parameters
     profile_sd_topsl = config.getfloat('main', 'profile_sd_topsl')
@@ -369,7 +368,6 @@ def main(argv):
     bgr = config.getfloat('main', 'bgr')
     mmax = config.getfloat('main', 'mmax')
     mmin = config.getfloat('main', 'mmin')
-    print('-----------------------------------', mmin)
     #
     # set profile folder
     path = config.get('main', 'profile_folder')
@@ -411,6 +409,7 @@ def main(argv):
     #
     profiles, pro_fnames = read_profiles(path)
     #
+    """
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         import matplotlib.pyplot as plt
         from mpl_toolkits.mplot3d import Axes3D
@@ -419,7 +418,7 @@ def main(argv):
         for ipro, (pro, fnme) in enumerate(zip(profiles, pro_fnames)):
             plon = ([x+360 if x<0 else x for x in p.longitude])
             tmp = [[plon, p.latitude, p.depth] for p in pro.points]
-            #tmp = [[p.longitude, p.latitude, p.depth] for p in pro.points]
+ #           tmp = [[p.longitude, p.latitude, p.depth] for p in pro.points]
             tmp = np.array(tmp)
             ax.plot(tmp[:, 0], tmp[:, 1], tmp[:, 2], 'x--b', markersize=2)
             tmps = '{:d}-{:s}'.format(ipro, os.path.basename(fnme))
@@ -427,6 +426,7 @@ def main(argv):
         ax.invert_zaxis()
         ax.view_init(50, 55)
         plt.show()
+    """
     #
     # create mesh from profiles
     msh = create_from_profiles(profiles, profile_sd=profile_sd_topsl,
@@ -438,18 +438,20 @@ def main(argv):
     # lower mesh
     lmsh = create_lower_surface_mesh(msh, slab_thickness)
     #
-    # get min and ma values
+    # get min and max values
     milo, mila, mide, malo, mala, made = get_min_max(msh, lmsh)
     #
     # discretizing the slab
-    omsh = Mesh(msh[:, :, 0], msh[:, :, 1], msh[:, :, 2])
-    olmsh = Mesh(lmsh[:, :, 0], lmsh[:, :, 1], lmsh[:, :, 2])
+    # omsh = Mesh(msh[:, :, 0], msh[:, :, 1], msh[:, :, 2])
+    # olmsh = Mesh(lmsh[:, :, 0], lmsh[:, :, 1], lmsh[:, :, 2])
+
     #
     # this `dlt` value [in degrees] is used to create a buffer around the mesh
     dlt = 5.0
     msh3d = Grid3d(milo-dlt, mila-dlt, mide, malo+dlt, mala+dlt, made, hspa,
                    vspa)
-    mlo, mla, mde = msh3d.select_nodes_within_two_meshesa(omsh, olmsh)
+    # mlo, mla, mde = msh3d.select_nodes_within_two_meshesa(omsh, olmsh)
+    mlo, mla, mde = msh3d.get_coordinates_vectors()
     #
     # save data on hdf5 file
     if os.path.exists(hdf5_filename):
@@ -472,24 +474,25 @@ def main(argv):
     r, proj = spatial_index(smooth)
     #
     # magnitude-frequency distribution
-    if 0:
-        mfd = TruncatedGRMFD(min_mag=mmin, max_mag=mmax, bin_width=0.1,
-                             a_val=agr, b_val=bgr)
-    else:
-        magnitudes = []
-        occurrence_rates = []
-        bw = 0.1
-        for m in np.arange(mmin, mmax, bw):
-            o = 10.**(-bgr*m+agr)-10.**(-bgr*(m+bw)+agr)
-            magnitudes.append(m+bw/2)
-            occurrence_rates.append(o)
-        mfd = ArbitraryMFD(magnitudes, occurrence_rates)
-    #
+    mfd = TruncatedGRMFD(min_mag=mmin, max_mag=mmax, bin_width=0.1,
+                         a_val=agr, b_val=bgr)
     # create all the ruptures - the probability of occurrence is for one year
     # in this case
     allrup = create_ruptures(mfd, dips, sampling, msr, asprs, float_strike,
                              float_dip, r, values, oms, 1., hdf5_filename,
                              uniform_fraction, proj)
+
+
+def main(argv):
+
+    p = sap.Script(calculate_ruptures)
+    p.arg(name='ini_fname', help='.ini filename')
+    #p.arg(name='reference_folder', help='Reference folder for paths')
+
+    if len(argv) < 1:
+        print(p.help())
+    else:
+        p.callfunc()
 
 
 if __name__ == "__main__":
