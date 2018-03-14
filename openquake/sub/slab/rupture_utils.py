@@ -93,9 +93,7 @@ def get_weights(centroids, r, values, proj):
 
     """
     #
-    #
-    # mean_lo = _get_mean_longitude(centroids[:, :, 0].flatten())
-    # p = Proj('+proj=lcc +lon_0={:f}'.format(mean_lo))
+    # set the projection
     p = proj
     # projected centroids - projection shouldn't be an issue here as long as
     # we can get the nearest neighbour correctly

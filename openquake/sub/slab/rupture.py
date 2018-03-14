@@ -97,8 +97,6 @@ def spatial_index(smooth):
     """
     :param smooth:
         An instance of the :class:``
-    :param proj:
-        An instance of
     """
 
     def _generator(mesh, p):
@@ -413,6 +411,7 @@ def calculate_ruptures(ini_fname, ref_fdr=None):
     print('Reading profiles from:', path)
     profiles, pro_fnames = _read_profiles(path)
     #
+    """
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         import matplotlib.pyplot as plt
         from mpl_toolkits.mplot3d import Axes3D
@@ -427,7 +426,6 @@ def calculate_ruptures(ini_fname, ref_fdr=None):
         ax.invert_zaxis()
         ax.view_init(50, 55)
         plt.show()
-    """
     """
     #
     # create mesh from profiles
@@ -463,6 +461,7 @@ def calculate_ruptures(ini_fname, ref_fdr=None):
     grp_slab.create_dataset('top', data=msh)
     grp_slab.create_dataset('bot', data=lmsh)
     fh5.close()
+
     #
     # get catalogue
     catalogue = get_catalogue(cat_pickle_fname, treg_filename, label)
