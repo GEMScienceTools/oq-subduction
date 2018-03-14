@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # coding: utf-8
 
 import os
@@ -488,7 +489,7 @@ def main(argv):
 
     p = sap.Script(calculate_ruptures)
     p.arg(name='ini_fname', help='.ini filename')
-    p.arg(name='reference_folder', help='Reference folder for paths')
+    p.opt(name='reference_folder', help='Reference folder for paths')
 
     if len(argv) < 1:
         print(p.help())
