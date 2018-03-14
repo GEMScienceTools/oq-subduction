@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import sys
 import numpy
 import logging
@@ -53,7 +52,7 @@ def build_complex_surface(in_path, max_sampl_dist, out_path, upper_depth=0,
     logging.info('Depth max: {:.2f}'.format(dmax))
     #
     #
-    number_of_samples = numpy.ceil(lengths[longest_key] / max_sampl_dist)
+    number_of_samples = numpy.ceil(lengths[longest_key] / float(max_sampl_dist))
     tmps = 'Number of subsegments for each profile: {:d}'
     logging.info(tmps.format(int(number_of_samples)))
     tmp = lengths[shortest_key]/number_of_samples
