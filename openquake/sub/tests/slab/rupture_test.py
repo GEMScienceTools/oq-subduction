@@ -3,6 +3,7 @@
 
 import os
 import unittest
+import shutil
 
 from openquake.sub.slab.rupture import calculate_ruptures
 from openquake.sub.build_complex_surface import build_complex_surface
@@ -23,6 +24,10 @@ class RuptureSetCreationTest(unittest.TestCase):
         # prepare the input folder and the output folder
         in_path = os.path.join(BASE_DATA_PATH, './../data/sp_cam/')
         out_path = os.path.join(BASE_DATA_PATH, './../data/tmp/')
+        #
+        # cleaning the tmp directory
+        if os.path.exists(out_path):
+            shutil.rmtree(out_path)
         #
         # first we create the complex surface. We use the profiles used for
         # the subduction in CCARA

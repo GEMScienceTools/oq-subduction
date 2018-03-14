@@ -36,20 +36,6 @@ def get_centroids(lons, lats, deps):
     return cen
 
 
-def read_profiles(path):
-    """
-    :param path:
-        The path to a folder containing a set of profiles
-    """
-    path = os.path.join(path, 'cs*.csv')
-    profiles = []
-    fnames = []
-    for filename in sorted(glob.glob(path)):
-        profiles.append(_read_profile(filename))
-        fnames.append(filename)
-    return profiles, fnames
-
-
 def create_inslab_meshes(msh, dips, slab_thickness, sampling):
     oms = {}
     for dip in dips:
