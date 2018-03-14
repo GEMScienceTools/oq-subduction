@@ -133,7 +133,7 @@ def create_faults(mesh, iedge, thickness, rot_angle, sampling):
     lld = np.array([mesh[:, :, 0].flatten('C'), mesh[:, :, 1].flatten('C'),
                     mesh[:, :, 2].flatten('C')]).T
     idx = np.isnan(lld[:, 0])
-    assert np.nanmax(mesh[:, :, 2]) < 500.
+    assert np.nanmax(mesh[:, :, 2]) < 750.
     #
     # project the points using Lambert Conic Conformal - for the reference
     # meridian 'lon_0' we use the mean longitude of the mesh
@@ -150,7 +150,7 @@ def create_faults(mesh, iedge, thickness, rot_angle, sampling):
     tmpx = np.reshape(x, shape,  order='C')
     tmpy = np.reshape(y, shape,  order='C')
     meshp = np.stack((tmpx, tmpy, mesh[:, :, 2]), axis=2)
-    assert np.nanmax(meshp[:, :, 2]) < 500.
+    assert np.nanmax(meshp[:, :, 2]) < 750.
     #
     # check if the selected edge is continuous, otherwise split
     if np.all(np.diff(idxs) == 1):
@@ -277,6 +277,7 @@ def get_coords(line):
     tmp = []
     for p in line.points:
         if p is not None:
+            p.longitude = p.longitude+360 if p.longitude<0 else p.longitude
             tmp.append([p.longitude, p.latitude, p.depth])
     return tmp
 
@@ -519,6 +520,7 @@ def get_mesh_back(pfs, rfi, sd):
                 tmp = (j+1)*sd - rdist[k]
                 lo, la, _ = g.fwd(pl[k, 0], pl[k, 1], az12,
                                   tmp*hdist/tdist*1e3)
+                lo = lo+360 if lo<0 else lo
                 de = pl[k, 2] + tmp*vdist/hdist
                 npr[laidx[k]+1][k] = [lo, la, de]
 
@@ -547,8 +549,12 @@ def get_mesh_back(pfs, rfi, sd):
                             for pro in pfs:
                                 tmp = [[p[0], p[1], p[2]] for p in pro]
                                 tmp = np.array(tmp)
+                                tmp[:,0] = ([x+360 if x<0 else x
+                                             for x in tmp[:,0]])
                                 ax.plot(tmp[:, 0], tmp[:, 1], tmp[:, 2],
                                         'x--b', markersize=2, label='original')
+                            p1[0] = p1[0]+360 if p1[0]<0 else p1[0]
+                            p2[0] = p2[0]+360 if p2[0]<0 else p2[0]
                             # new profiles
                             for pro in npr:
                                 tmp = [[p[0], p[1], p[2]] for p in pro]
@@ -618,6 +624,12 @@ def get_mesh(pfs, rfi, sd):
         # profiles
         pr = pfs[i+1]
         pl = pfs[i]
+
+        for ii in range(0,len(pl)):
+            ptmp = pl[ii][0]
+            ptmp = ptmp+360 if ptmp<0 else ptmp
+            pl[ii][0] = ptmp
+
         #
         # point in common on the two profiles
         cmm = np.logical_and(np.isfinite(pr[:, 2]), np.isfinite(pl[:, 2]))
@@ -675,6 +687,7 @@ def get_mesh(pfs, rfi, sd):
                 tmp = (j+1)*sd - rdist[k]
                 lo, la, _ = g.fwd(pl[k, 0], pl[k, 1], az12,
                                   tmp*hdist/tdist*1e3)
+                lo = lo+360 if lo < 0 else lo
                 de = pl[k, 2] + tmp*vdist/hdist
                 npr[laidx[k]+1][k] = [lo, la, de]
 
@@ -699,27 +712,31 @@ def get_mesh(pfs, rfi, sd):
                             for ipro, pro in enumerate(pfs):
                                 tmp = [[p[0], p[1], p[2]] for p in pro]
                                 tmp = np.array(tmp)
-                                ax.plot(tmp[:, 0], tmp[:, 1], tmp[:, 2],
+                                tmplon = tmp[:,0]
+                                tmplon = ([x+360 if x<0 else x for x in tmplon])
+                                tmplon0 = tmplon[0]
+                                ax.plot(tmplon, tmp[:, 1], tmp[:, 2],
                                         'x--b', markersize=2)
-                                ax.text(tmp[0, 0], tmp[0, 1], tmp[0, 2],
+                                ax.text(tmplon0, tmp[0, 1], tmp[0, 2],
                                         '{:d}'.format(ipro))
                             for pro in npr:
                                 tmp = [[p[0], p[1], p[2]] for p in pro]
                                 tmp = np.array(tmp)
-                                ax.plot(tmp[:, 0], tmp[:, 1], tmp[:, 2],
+                                tmplon = tmp[:,0]
+                                tmplon = ([x+360 if x<0 else x for x in tmplon])
+                                ax.plot(tmplon, tmp[:, 1], tmp[:, 2],
                                         'x--r', markersize=2)
+                            p1[0] = p1[0]+360 if p1[0]<0 else p1[0]
+                            p2[0] = p2[0]+360 if p2[0]<0 else p2[0]
                             ax.plot([p1[0]], [p1[1]], [p1[2]], 'og')
                             ax.plot([p2[0]], [p2[1]], [p2[2]], 'og')
                             ax.invert_zaxis()
                             ax.view_init(50, 55)
                             plt.show()
-
                         raise ValueError('')
-
                 laidx[k] += 1
             rdist[k] = tdist - sd*ndists + rdist[k]
             assert rdist[k] < sd
-
     return npr
 
 

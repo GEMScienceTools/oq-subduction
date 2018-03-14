@@ -15,8 +15,9 @@ from pyproj import Proj
 from openquake.sub.misc.edge import create_from_profiles
 from openquake.sub.quad.msh import create_lower_surface_mesh
 from openquake.sub.grid3d import Grid3d
-from openquake.sub.misc.utils import (get_min_max, read_profiles,
-                                      create_inslab_meshes, get_centroids)
+from openquake.sub.misc.profile import _read_profiles
+from openquake.sub.misc.utils import (get_min_max, create_inslab_meshes,
+                                      get_centroids)
 from openquake.sub.slab.rupture_utils import (get_discrete_dimensions,
                                               get_ruptures, get_weights)
 
@@ -96,8 +97,6 @@ def spatial_index(smooth):
     """
     :param smooth:
         An instance of the :class:``
-    :param proj:
-        An instance of
     """
 
     def _generator(mesh, p):
@@ -226,7 +225,6 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
                             # probability of occurrence. For the time being
                             # this is not defined
                             rups.append([srfc, wsum, dip, aspr, []])
-                #
                 # update the list of ruptures
                 lab = '{:.2f}'.format(mag)
                 if lab in allrup:
@@ -338,6 +336,9 @@ def calculate_ruptures(ini_fname, ref_fdr=None):
     """
     :param str ini_fname:
         The name of a .ini file
+    :param ref_fdr:
+        The path to the reference folder used to set the paths in the .ini
+        file. If not provided directly, we use the one set in the .ini file.
     """
     #
     # read config file
@@ -404,10 +405,11 @@ def calculate_ruptures(ini_fname, ref_fdr=None):
     if msrstr not in msrd.keys():
         raise ValueError('')
     msr = msrd[msrstr]()
-
+    #
     # ------------------------------------------------------------------------
     #
-    profiles, pro_fnames = read_profiles(path)
+    print('Reading profiles from:', path)
+    profiles, pro_fnames = _read_profiles(path)
     #
     """
     if logging.getLogger().isEnabledFor(logging.DEBUG):
@@ -459,6 +461,7 @@ def calculate_ruptures(ini_fname, ref_fdr=None):
     grp_slab.create_dataset('top', data=msh)
     grp_slab.create_dataset('bot', data=lmsh)
     fh5.close()
+
     #
     # get catalogue
     catalogue = get_catalogue(cat_pickle_fname, treg_filename, label)
