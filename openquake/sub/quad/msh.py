@@ -29,7 +29,10 @@ def create_lower_surface_mesh(msh, slab_thickness):
     #
     # project the points using Lambert Conic Conformal - for the reference
     # meridian 'lon_0' we use the mean longitude of the grid
-    reference_longitude = np.mean(msh[:, :, 0].flatten('C'))
+    all_lons = msh[:, :, 0].flatten('C')
+    all_lons = np.array(([x+360 if x<0 else x for x in all_lons]))
+    real_lons = msh[:, :, 0][~np.isnan(msh[:,:,0])].flatten('C')
+    reference_longitude = np.mean(real_lons)
     p = Proj('+proj=lcc +lon_0={:f}'.format(reference_longitude))
     x, y = p(msh[:, :, 0].flatten('C'), msh[:, :, 1].flatten('C'))
     x = x / 1e3  # m -> km

@@ -416,7 +416,9 @@ def calculate_ruptures(ini_fname, ref_fdr=None):
         fig = plt.figure(figsize=(10, 8))
         ax = fig.add_subplot(111, projection='3d')
         for ipro, (pro, fnme) in enumerate(zip(profiles, pro_fnames)):
-            tmp = [[p.longitude, p.latitude, p.depth] for p in pro.points]
+            plon = ([x+360 if x<0 else x for x in p.longitude])
+            tmp = [[plon, p.latitude, p.depth] for p in pro.points]
+ #           tmp = [[p.longitude, p.latitude, p.depth] for p in pro.points]
             tmp = np.array(tmp)
             ax.plot(tmp[:, 0], tmp[:, 1], tmp[:, 2], 'x--b', markersize=2)
             tmps = '{:d}-{:s}'.format(ipro, os.path.basename(fnme))
@@ -485,7 +487,7 @@ def main(argv):
 
     p = sap.Script(calculate_ruptures)
     p.arg(name='ini_fname', help='.ini filename')
-    p.arg(name='reference_folder', help='Reference folder for paths')
+    #p.arg(name='reference_folder', help='Reference folder for paths')
 
     if len(argv) < 1:
         print(p.help())
