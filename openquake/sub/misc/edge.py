@@ -90,22 +90,21 @@ def _get_mean_longitude(tmp):
     :returns:
         A float representing the mean longitude
     """
-    if np.amax(tmp) - np.amin(tmp) > 100:
-        tmp[tmp < 0] = 360. + tmp[tmp < 0]
-        melo = np.mean(tmp)
-        if melo > 180:
-            melo = 360 - melo
-        del tmp
-    else:
-        melo = np.mean(tmp)
+    tmp = np.array(tmp)
+    tmp = tmp[~np.isnan(tmp)]
+    if len(tmp) < 1:
+        raise ValueError('Unsufficient number of values')
+    tmp[tmp<0.] = tmp[tmp<0.] + 360
+    melo = np.mean(tmp)
+    melo = melo if melo < 180 else melo - 360
     return melo
 
 
 def create_faults(mesh, iedge, thickness, rot_angle, sampling):
     """
     Creates a list of profiles at a given angle from a mesh limiting the fault
-    at the top. The fault is confined with a seismogenic layer with a thickness
-    provided by the user.
+    at the top. The fault is confined within a seismogenic layer with a
+    thickness provided by the user.
 
     :param numpy.ndarray mesh:
         The mesh defining the top of the slab
@@ -117,9 +116,10 @@ def create_faults(mesh, iedge, thickness, rot_angle, sampling):
         Rotation angle of the new fault (reference is the dip direction of the
         plane interpolation the slab surface)
     :param float sampling:
-        The sampling distance used to create the profiles [km]
+        The sampling distance used to create the profiles of the virtual
+        faults [km]
     :returns:
-        A mesh representing the surface of the new fault source.
+        A list of :class:`openquake.hazardlib.geo.line.Line` instances
     """
     #
     # save mesh original shape
@@ -130,7 +130,8 @@ def create_faults(mesh, iedge, thickness, rot_angle, sampling):
     # idxs = np.nonzero(np.isfinite(mesh[:, iedge, 2]))
     #
     # create a 3xn array with the points composing the mesh
-    lld = np.array([mesh[:, :, 0].flatten('C'), mesh[:, :, 1].flatten('C'),
+    lld = np.array([mesh[:, :, 0].flatten('C'),
+                    mesh[:, :, 1].flatten('C'),
                     mesh[:, :, 2].flatten('C')]).T
     idx = np.isnan(lld[:, 0])
     assert np.nanmax(mesh[:, :, 2]) < 750.
