@@ -13,6 +13,8 @@ import configparser
 
 from pyproj import Proj
 
+from openquake.sub.plotting.tools import plot_mesh
+
 from openquake.sub.misc.edge import create_from_profiles
 from openquake.sub.quad.msh import create_lower_surface_mesh
 from openquake.sub.grid3d import Grid3d
@@ -30,7 +32,6 @@ from openquake.hmtk.seismicity.selector import CatalogueSelector
 from openquake.hazardlib.geo.surface.gridded import GriddedSurface
 
 from oqmbt.tools.smooth3d import Smoothing3D
-
 
 def get_catalogue(cat_pickle_fname, treg_filename, label):
     """
@@ -356,6 +357,7 @@ def calculate_ruptures(ini_fname, ref_fdr=None):
     # set parameters
     profile_sd_topsl = config.getfloat('main', 'profile_sd_topsl')
     edge_sd_topsl = config.getfloat('main', 'edge_sd_topsl')
+    # this sampling distance is used to
     sampling = config.getfloat('main', 'sampling')
     float_strike = config.getfloat('main', 'float_strike')
     float_dip = config.getfloat('main', 'float_dip')
@@ -433,10 +435,45 @@ def calculate_ruptures(ini_fname, ref_fdr=None):
     msh = create_from_profiles(profiles, profile_sd=profile_sd_topsl,
                                edge_sd=edge_sd_topsl)
     #
-    # create inslab meshes
-    oms = create_inslab_meshes(msh, dips, slab_thickness, sampling)
+    # Create inslab mesh. The one created here describes the top of the slab.
+    # The output (i.e ohs) is a dictionary with the values of dip as keys. The
+    # values in the dictionary are :class:`openquake.hazardlib.geo.line.Line`
+    # instances
+    ohs = create_inslab_meshes(msh, dips, slab_thickness, sampling)
+
+    if 0:
+        vsc = 0.1
+
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.mplot3d import Axes3D
+        fig = plt.figure(figsize=(10, 8))
+        ax = fig.add_subplot(111, projection='3d')
+        #
+        # profiles
+        for ipro, (pro, fnme) in enumerate(zip(profiles, pro_fnames)):
+            tmp = [[p.longitude, p.latitude, p.depth] for p in pro.points]
+            tmp = np.array(tmp)
+            tmp[tmp[:,0] < 0, 0] = tmp[tmp[:,0] < 0, 0] + 360
+            ax.plot(tmp[:, 0], tmp[:, 1], tmp[:, 2]*vsc, 'x--b', markersize=2)
+            tmps = '{:d}-{:s}'.format(ipro, os.path.basename(fnme))
+            ax.text(tmp[0, 0], tmp[0, 1], tmp[0, 2]*vsc, tmps)
+        #
+        # top of the slab mesh
+        plot_mesh(ax, msh, vsc)
+        #
+        for key in ohs:
+            for iii in range(len(ohs[key])):
+                for line in ohs[key][iii]:
+                    pnt = np.array([[p.longitude, p.latitude, p.depth]
+                                    for p in line.points])
+                    pnt[pnt[:,0] < 0, 0] = pnt[pnt[:,0] < 0, 0] + 360
+                    ax.plot(pnt[:,0], pnt[:,1], pnt[:,2]*vsc, '-r')
+        ax.invert_zaxis()
+        ax.view_init(50, 55)
+        plt.show()
+
     #
-    # lower mesh
+    # The one created here describes the bottom of the slab
     lmsh = create_lower_surface_mesh(msh, slab_thickness)
     #
     # get min and max values
@@ -445,7 +482,6 @@ def calculate_ruptures(ini_fname, ref_fdr=None):
     # discretizing the slab
     # omsh = Mesh(msh[:, :, 0], msh[:, :, 1], msh[:, :, 2])
     # olmsh = Mesh(lmsh[:, :, 0], lmsh[:, :, 1], lmsh[:, :, 2])
-
     #
     # this `dlt` value [in degrees] is used to create a buffer around the mesh
     dlt = 5.0
@@ -462,7 +498,6 @@ def calculate_ruptures(ini_fname, ref_fdr=None):
     grp_slab.create_dataset('top', data=msh)
     grp_slab.create_dataset('bot', data=lmsh)
     fh5.close()
-
     #
     # get catalogue
     catalogue = get_catalogue(cat_pickle_fname, treg_filename, label)
@@ -481,7 +516,7 @@ def calculate_ruptures(ini_fname, ref_fdr=None):
     # create all the ruptures - the probability of occurrence is for one year
     # in this case
     allrup = create_ruptures(mfd, dips, sampling, msr, asprs, float_strike,
-                             float_dip, r, values, oms, 1., hdf5_filename,
+                             float_dip, r, values, ohs, 1., hdf5_filename,
                              uniform_fraction, proj)
 
 

@@ -17,7 +17,7 @@ def build_complex_surface(in_path, max_sampl_dist, out_path, upper_depth=0,
     """
     :param str in_path:
         Folder name
-    :param str float in_path:
+    :param str float max_sampl_dist:
         Sampling distance [km]
     :param str out_path:
         Folder name
@@ -25,6 +25,10 @@ def build_complex_surface(in_path, max_sampl_dist, out_path, upper_depth=0,
         The depth above which we cut the profiles
     :param float lower_depth:
         The depth below which we cut the profiles
+    :param str from_id:
+        The ID of the first profile to be considered
+    :param str to_id:
+        The ID of the last profile to be considered
     """
     #
     # Check input and output folders
