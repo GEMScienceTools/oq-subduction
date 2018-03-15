@@ -524,7 +524,7 @@ def main(argv):
 
     p = sap.Script(calculate_ruptures)
     p.arg(name='ini_fname', help='.ini filename')
-    p.opt(name='reference_folder', help='Reference folder for paths')
+    p.opt(name='ref_fdr', help='Reference folder for paths')
 
     if len(argv) < 1:
         print(p.help())
