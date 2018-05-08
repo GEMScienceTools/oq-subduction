@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import code
 import os
 import re
 import sys
@@ -119,6 +120,7 @@ def get_interpolated_profiles(sps, lengths, number_of_samples):
                             raise ValueError(msg)
                         # new depth larger than previous
                         if numpy.any(numpy.array(spro)[:-1, 2] > spro[-1][2]):
+                            code.interact(local=locals())
                             raise ValueError('')
 
                 #

@@ -65,14 +65,14 @@ def plot(trench, cat, cs_dict, interdistance):
         Separation distance between cross-sections [km]
     """
 
-    minlo = min(trench.axis[:, 0]) - 5
-    minla = min(trench.axis[:, 1]) - 5
+    minlo = min(trench.axis[:, 0]) - 9
+    minla = min(trench.axis[:, 1]) - 3
     maxlo = max(trench.axis[:, 0]) + 5
     maxla = max(trench.axis[:, 1]) + 5
     midlo = (minlo+maxlo)/2
     midla = (minla+maxla)/2
 
-    fig = plt.figure(figsize=(12,9))
+    fig = plt.figure(figsize=(22,18))
 
     #
     # Plot the basemap
@@ -104,7 +104,7 @@ def plot(trench, cat, cs_dict, interdistance):
     colors = cat.data['depth']
     p = PatchCollection(patches, zorder=6, edgecolors='white')
     p.set_alpha(0.5)
-    p.set_clim([0, 200])
+    p.set_clim([0, 450])
     p.set_array(numpy.array(colors))
     plt.gca().add_collection(p)
     plt.colorbar(p,fraction=0.02, pad=0.04, extend='max')
@@ -121,6 +121,8 @@ def plot(trench, cat, cs_dict, interdistance):
     for key in cs_dict:
         cs = cs_dict[key]
         if cs is not None:
+            print(key,1,cs.plo[0],cs.pla[0])
+            print(key,2,cs.plo[1],cs.pla[1])
             x, y = m(cs.plo, cs.pla)
             plt.plot(x, y, ':r', linewidth=2, zorder=20)
             text = plt.text(x[0], y[0], '%s' % key, ha='center',

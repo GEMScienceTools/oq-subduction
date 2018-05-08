@@ -1,11 +1,16 @@
 #!/usr/bin/env python
+import os
+import code
 import re
 import sys
 import pickle
+import logging
 import numpy
 import scipy
+import h5py
 import matplotlib
 import configparser
+import time
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
@@ -15,12 +20,14 @@ from matplotlib.backend_bases import KeyEvent
 from matplotlib.patches import (Circle, Rectangle)
 from matplotlib.collections import PatchCollection
 
-from openquake.sub.cross_sections import (CrossSection,
+from openquake.sub.cross_sections_vhdf5 import (CrossSection,
                                                CrossSectionData)
 from openquake.sub.utils import plot_planes_at, mecclass
 
 from openquake.hazardlib.geo.geodetic import geodetic_distance
 from openquake.hazardlib.geo.geodetic import point_at
+
+logging.basicConfig(filename='storing_data.log', level=logging.DEBUG)
 
 # basic settings
 MAX_DEPTH = 350
@@ -36,6 +43,8 @@ KAVERINA = {'N': 'blue',
             'SS-N': 'palegreen',
             'R-SS': 'goldenrod',
             'SS-R': 'yellow'}
+
+#basic setup: checking for existing directories store output
 
 def onclick(event):
     print('button=%d, x=%d, y=%d, xdata=%f, ydata=%f' %
@@ -157,17 +166,18 @@ def _plot_slab(axes, csda):
     :parameter axes:
     :parameter csda:
     """
-    if (csda.slab1pt0 is None) & (csda.slab2pt0 is None):
+    if (csda.slab1pt0 is None) & (csda.slab2pt0 is None) & (csda.cs is None):
         return
-    #if csda.slab2pt0 is None:
-    #    return
+
     plt.sca(axes)
     olo = csda.csec.olo
     ola = csda.csec.ola
     slab1pt0 = csda.slab1pt0
     slab2pt0 = csda.slab2pt0
+    crssec = csda.cs
     iii=[]
     jjj=[]
+    kkk=[]
     if slab1pt0 is not None:
         slb1_dst = geodetic_distance(olo, ola, slab1pt0[:, 0], slab1pt0[:, 1])
         slb1_dep = slab1pt0[:, 2]
@@ -176,13 +186,19 @@ def _plot_slab(axes, csda):
         slb2_dst = geodetic_distance(olo, ola, slab2pt0[:, 0], slab2pt0[:, 1])
         slb2_dep = slab2pt0[:, 2]
         jjj = numpy.argsort(slb2_dst)
+    if crssec is not None:
+        cs_dst = geodetic_distance(olo, ola, crssec[:, 0], crssec[:, 1])
+        cs_dep = crssec[:, 2]
+        kkk = numpy.argsort(cs_dst)
     if len(iii) > 2:
         plt.plot(slb1_dst[iii], -1*slb1_dep[iii], ':b', linewidth=3, zorder=30)
         plt.text(slb1_dst[iii[-1]], -1*slb1_dep[iii[-1]], 'Slab1.0', fontsize=8)
-
     if len(jjj) > 2:
         plt.plot(slb2_dst[jjj], -1*slb2_dep[jjj], '-b', linewidth=3, zorder=30)
         plt.text(slb2_dst[jjj[-1]], -1*slb2_dep[jjj[-1]], 'Slab2.0', fontsize=8)
+    if len(kkk) > 2:
+        plt.plot(cs_dst[kkk], 1*cs_dep[kkk], 'k', linewidth=3, zorder=30)
+        plt.text(cs_dst[kkk[-1]], -1*cs_dep[kkk[-1]], 'Slab2.0', fontsize=8)
 
 def _plot_np_intersection(axes, csda):
     """
@@ -339,12 +355,12 @@ def _plot_volc(axes, csda):
     """
     if csda.volc is None:
         return
-
+    #code.interact(local=locals())
     olo = csda.csec.olo
     ola = csda.csec.ola
     patches = []
 
-    if (len(csda.volc)-1) >= 1:
+    if (len(csda.volc.flatten())) > 2:
         vuls = geodetic_distance(olo, ola,
                                  csda.volc[:, 0],
                                  csda.volc[:, 1])
@@ -449,9 +465,7 @@ def plot(csda, depp, lnght):
 
     #fig = plt.figure(figsize=(15,9))
     gs = gridspec.GridSpec(2, 2, width_ratios=[1, 5], height_ratios=[1, 5])
-    #
-    ax0 = plt.subplot(gs[0])
-    plt.axis('off')
+    # ax0 = plt.subplot(gs[0]) plt.axis('off')
 
     ax3 = plt.subplot(gs[3])
     ax3.xaxis.tick_top()
@@ -466,7 +480,7 @@ def plot(csda, depp, lnght):
     _plot_moho(plt.subplot(gs[3]), csda)
     _plot_litho(plt.subplot(gs[3]), csda)
     _plot_topo(plt.subplot(gs[3]), csda)
-#    _plot_volc(plt.subplot(gs[3]), csda)
+    _plot_volc(plt.subplot(gs[3]), csda)
 
     _plot_focal_mech(plt.subplot(gs[3]), csda)
     _plot_slab(plt.subplot(gs[3]), csda)
@@ -491,7 +505,7 @@ def plot(csda, depp, lnght):
 
     line, = ax3.plot([], [], zorder=100)  # empty line
     point, = ax3.plot([], [], 'xr', zorder=100)
-    linebuilder = LineBuilder(line, point, csda.csec)
+    linebuilder = LineBuilder(line, point, csda.csec, csda.slab1pt0, csda.slab2pt0)
 
     return fig
 
@@ -499,7 +513,7 @@ def plot(csda, depp, lnght):
 
 class LineBuilder:
 
-    def __init__(self, line, point, csec):
+    def __init__(self, line, point, csec, slab1, slab2):
         self.line = line
         self.point = point
         self.xp = list(point.get_xdata())
@@ -509,6 +523,8 @@ class LineBuilder:
         self.cid = line.figure.canvas.mpl_connect('button_press_event', self)
         self.pid = line.figure.canvas.mpl_connect('key_press_event', self)
         self.csec = csec
+        self.slab1 = slab1
+        self.slab2 = slab2
         self.data = []
 
     def __call__(self, event):
@@ -527,9 +543,19 @@ class LineBuilder:
                 self.data = []
             elif event.key is 'f':
                 dat = numpy.array(self.data)
-                fname = './cs_%s.csv' % (self.csec.ids)
+                fname = './cs/cs_%s.csv' % (self.csec.ids)
                 numpy.savetxt(fname, dat)
                 print('Section data saved to: %s' % (fname))
+            elif event.key is 't':
+                dat = numpy.array(self.slab2)
+                fname = './cs/cs_%s.csv' % (self.csec.ids)
+                numpy.savetxt(fname, dat)
+                print('Using slab2pt0; saving to: %s' % (fname))
+            elif event.key is 'o':
+                dat = numpy.array(self.slab1)
+                fname = './cs/cs_%s.csv' % (self.csec.ids)
+                numpy.savetxt(fname, dat)
+                print('Using slab1pt0; saving to: %s' % (fname))
             else:
                 pass
 
@@ -562,6 +588,14 @@ class LineBuilder:
 def plt_cs(olo, ola, depp, lnght, strike, ids, ini_filename):
     """
     """
+    treg_filename = './store_data/cs_%s.hdf5' % ids
+    logger = logging.getLogger('storing_data')
+    if not os.path.exists(treg_filename):
+        logger.info('Creating: {:s}'.format(treg_filename))
+        f = h5py.File(treg_filename, "w")
+        f.close()
+    else:
+        logger.info('{:s} exists'.format(treg_filename))
     csec = CrossSection(olo, ola, [lnght], [strike], ids)
     csda = CrossSectionData(csec)
 
@@ -577,19 +611,24 @@ def plt_cs(olo, ola, depp, lnght, strike, ids, ini_filename):
     fname_topo = config['data']['topo_filename']
     fname_litho = config['data']['litho_filename']
     fname_volc = config['data']['volc_filename']
+    fname_myslab = './cs/cs_%s.csv' % ids
 
     csda.set_trench_axis(fname_trench)
     cat = pickle.load(open(fname_eqk_cat, 'rb'))
-    csda.set_catalogue(cat,75.)
+    csda.set_catalogue(cat,treg_filename,75.)
+    start_time = time.time()
     if re.search('[a-z]', fname_slab1):
-        csda.set_slab(fname_slab1)
+        csda.set_slab(fname_slab1,treg_filename)
     if re.search('[a-z]', fname_slab2):
-        csda.set_slab(fname_slab2)
-    csda.set_crust1pt0_moho_depth(fname_gmsa,50.)
-    csda.set_gcmt(fname_gcmt,75.)
-    csda.set_topo(fname_topo,0.50)
-    csda.set_litho_moho_depth(fname_litho,75.)
-   # csda.set_volcano(fname_volc,25.)
+        csda.set_slab(fname_slab2,treg_filename)
+    csda.set_crust1pt0_moho_depth(fname_gmsa,treg_filename,50.)
+    csda.set_gcmt(fname_gcmt,treg_filename,75.)
+    csda.set_topo(fname_topo,treg_filename,0.50)
+    csda.set_litho_moho_depth(fname_litho,treg_filename,75.)
+    csda.set_volcano(fname_volc,treg_filename,100.)
+    if os.path.exists(fname_myslab):
+        csda.set_myslab(fname_myslab,treg_filename)
+    print("--- %s seconds ---" % (time.time() - start_time))
 
     fig = plot(csda, depp, lnght)
 

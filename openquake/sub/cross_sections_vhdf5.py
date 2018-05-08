@@ -1,6 +1,7 @@
 import code
 import re
 import numpy
+import h5py
 
 from openquake.hazardlib.geo.geodetic import distance
 from openquake.hazardlib.geo.geodetic import npoints_towards
@@ -29,6 +30,7 @@ class CrossSectionData:
         self.topo = None
         self.litho = None
         self.volc = None
+        self.cs = None
 
     def set_trench_axis(self, filename):
         """
@@ -44,24 +46,39 @@ class CrossSectionData:
         fin.close()
         self.trench = numpy.array(trench)
 
-    def set_catalogue(self, catalogue, bffer=75.):
+    def set_catalogue(self, catalogue, tregfi, bffer=75.):
         """
         """
         print('setting catalogue')
-        na,na,na,na,qual = self.csec.get_mm()
-
-        if qual==1:
-            idxs = self.csec.get_eqks_within_buffer_idl(catalogue, bffer)
-        else:
-            idxs = self.csec.get_eqks_within_buffer(catalogue, bffer)
+        
         boo = numpy.zeros_like(catalogue.data['magnitude'], dtype=int)
+
+        do=0
+        f = h5py.File(tregfi, "a")
+        label = 'catalogue'
+        if label in f.keys():
+            #code.interact(local=locals())
+            idxs = f[label].value
+        else: 
+            do=1
+
+        if do==1:
+            na,na,na,na,qual = self.csec.get_mm()
+    
+            if qual==1:
+                idxs = self.csec.get_eqks_within_buffer_idl(catalogue, bffer)
+            else:
+                idxs = self.csec.get_eqks_within_buffer(catalogue, bffer)
+            f[label] = idxs
+            f.close()
+
         boo[idxs] = 1
         selector = CatalogueSelector(catalogue, create_copy=True)
         newcat = selector.select_catalogue(boo)
         self.ecat = newcat
 
     #def set_slab1pt0(self, filename, bffer=2.0):
-    def set_slab(self, filename, bffer=2.0):
+    def set_slab(self, filename, tregfi, bffer=2.0):
         """
         :parameter filename:
             The name of a .xyz grid containing Slab 1.0 data
@@ -71,6 +88,8 @@ class CrossSectionData:
             An array
         """
         print('setting slab')
+        chk=0
+        do=0
         # Read the Slab 1.0 file
         if 'slab1' in filename:
             chk=1
@@ -78,71 +97,92 @@ class CrossSectionData:
         if 'slab2' in filename:
             chk=2
             slab2pt0 = []
-        for line in open(filename):
-            aa = re.split('\s+', line)
-            if not re.search('[a-z]', aa[2]):
-                if chk==2:
-                    slab2pt0.append([float(aa[0]), float(aa[1]), float(aa[2])])
-                if chk==1:
-                    slab1pt0.append([float(aa[0]), float(aa[1]), float(aa[2])])
-        if chk==1:
-            slab1pt0or = numpy.asarray(slab1pt0)
+        f = h5py.File(tregfi, "a")
         if chk==2:
-            slab2pt0or = numpy.asarray(slab2pt0)
+            label = 'slab2pt0' 
+            if label in f.keys():
+                self.slab2pt0 = f[label].value
+            else:
+                do=1
+                minlo, maxlo, minla, maxla, qual = self.csec.get_mm()
+
+        if chk==1:
+            label = 'slab1pt0' 
+            #code.interact(local=locals())
+            if label in f.keys():
+                self.slab1pt0 = f[label].value
+            else:
+                do=1
+                minlo, maxlo, minla, maxla, qual = self.csec.get_mm()
+        if (do>0):
+        #read in data from slab file
+            for line in open(filename):
+                aa = re.split('\s+', line)
+                if not re.search('[a-z]', aa[2]):
+                    if chk==2:
+                        slab2pt0.append([float(aa[0]), float(aa[1]), float(aa[2])])
+                    if chk==1:
+                        slab1pt0.append([float(aa[0]), float(aa[1]), float(aa[2])])
+        #check if the slab1pt0 data indices are already in the treg file
+         
         # Get min and max longitude and latitude values
-        minlo, maxlo, minla, maxla, qual = self.csec.get_mm()
+        #minlo, maxlo, minla, maxla, qual = self.csec.get_mm()
         # Find the nodes of the grid within a certain distance from the plane
         # of the cross-section
-        if chk==1:
-            slab1pt0 = slab1pt0or
-        if chk==2:
-            slab2pt0 = slab2pt0or
-        idxslb = None 
-        idxslb2 = None
-        minlo, maxlo, minla, maxla, qual = self.csec.get_mm(2.0)
-        if chk==1:
-            idx = numpy.nonzero(slab1pt0or[:,0] > 180)
-            if len(idx[0]):
-                slab1pt0[idx[0], 0] = slab1pt0[idx[0], 0] - 360.
-        if (qual==0)&(chk==1):
-            idxslb = self.csec.get_grd_nodes_within_buffer(slab1pt0[:,0],
+            if chk==1:
+                slab1pt0or = numpy.asarray(slab1pt0)
+                slab1pt0 = slab1pt0or
+                idx = numpy.nonzero(slab1pt0or[:,0] > 180)
+                if len(idx[0]):
+                    slab1pt0[idx[0], 0] = slab1pt0[idx[0], 0] - 360.
+            if (qual==0)&(chk==1):
+                idxslb = self.csec.get_grd_nodes_within_buffer(slab1pt0[:,0],
                                                            slab1pt0[:,1],
                                                            bffer,
                                                            minlo, maxlo,
                                                            minla, maxla)
-        if (qual==1)&(chk==1):
-           idxslb = self.csec.get_grd_nodes_within_buffer_idl(slab1pt0[:,0],
+            if (qual==1)&(chk==1):
+               idxslb = self.csec.get_grd_nodes_within_buffer_idl(slab1pt0[:,0],
                                                             slab1pt0[:,1],
                                                             bffer,
                                                             minlo, maxlo,
                                                             minla, maxla)
-        if idxslb is not None:
+            #code.interact(local=locals())
             if chk==1:
-                self.slab1pt0 = numpy.squeeze(slab1pt0[idxslb, :])
+                if idxslb is not None and len(idxslb):
+                    self.slab1pt0 = numpy.squeeze(slab1pt0[idxslb, :])
+                #if label not in f.keys():
+#                 treg[idxslb] = True
+                    f[label]=self.slab1pt0
         
-        if chk==2:
-            idx2 = numpy.nonzero(slab2pt0or[:,0] > 180)
-            if len(idx2[0]):
-                slab2pt0[idx2[0], 0] = slab2pt0[idx2[0], 0] - 360.
-        if (qual==0)&(chk==2):
-           minlo, maxlo, minla, maxla, qual = self.csec.get_mm(2.0)
-           idxslb2 = self.csec.get_grd_nodes_within_buffer(slab2pt0[:,0],
+            if chk==2:
+                slab2pt0or = numpy.asarray(slab2pt0)
+                slab2pt0 = slab2pt0or
+                idx2 = numpy.nonzero(slab2pt0or[:,0] > 180)
+                if len(idx2[0]):
+                    slab2pt0[idx2[0], 0] = slab2pt0[idx2[0], 0] - 360.
+            if (qual==0)&(chk==2):
+#           minlo, maxlo, minla, maxla, qual = self.csec.get_mm(2.0)
+                idxslb2 = self.csec.get_grd_nodes_within_buffer(slab2pt0[:,0],
                                                            slab2pt0[:,1],
                                                            bffer,
                                                            minlo, maxlo,
                                                            minla, maxla)
-        if (qual==1)&(chk==2):
-           idxslb2 = self.csec.get_grd_nodes_within_buffer_idl(slab2pt0[:,0],
+            if (qual==1)&(chk==2):
+                idxslb2 = self.csec.get_grd_nodes_within_buffer_idl(slab2pt0[:,0],
                                                             slab2pt0[:,1],
                                                             bffer,
                                                             minlo, maxlo,
                                                             minla, maxla)
-        if idxslb2 is not None:
+
             if chk==2:
-                self.slab2pt0 = numpy.squeeze(slab2pt0[idxslb2, :])
+                if idxslb2 is not None and len(idxslb2):
+                    self.slab2pt0 = numpy.squeeze(slab2pt0[idxslb2, :])
+                    f[label]=self.slab2pt0
+        f.close()
 
 
-    def set_crust1pt0_moho_depth(self, filename, bffer=100.):
+    def set_crust1pt0_moho_depth(self, filename, tregfi, bffer=100.):
         """
         :parameter filename:
             The name of the file containing the CRUST 1.0 model
@@ -150,32 +190,43 @@ class CrossSectionData:
             A numpy array
         """
         print('setting crust/moho')
-        datal = []
-        for line in open(filename, 'r'):
-            xx = re.split('\s+', re.sub('\s+$', '', re.sub('^\s+', '', line)))
-            datal.append([float(val) for val in xx])
-        dataa = numpy.array(datal)
-        minlo, maxlo, minla, maxla, qual = self.csec.get_mm()
-        if qual==0:
-            minlo, maxlo, minla, maxla, qual = self.csec.get_mm(2.0)
-            idxs = self.csec.get_grd_nodes_within_buffer(dataa[:,0],
-                                                     dataa[:,1],
-                                                     bffer,
-                                                     minlo, maxlo,
-                                                     minla, maxla)
-        if qual==1:
-            idxs = self.csec.get_grd_nodes_within_buffer_idl(dataa[:,0],
-                                                     dataa[:,1],
-                                                     bffer,
-                                                     minlo, maxlo,
-                                                     minla, maxla)
-        if idxs is not None and len(idxs):
-            boo = numpy.zeros_like(dataa[:, 0], dtype=int)
-            boo[idxs[0]] = 1
-            self.moho = numpy.squeeze(dataa[idxs,:])
+        do=0
+        f = h5py.File(tregfi, "a")
+        label = 'crust1pt0'
+        if label in f.keys():
+            self.moho = f[label].value
+        else: 
+            do=1
+
+        if do==1:
+            datal = []
+            for line in open(filename, 'r'):
+                xx = re.split('\s+', re.sub('\s+$', '', re.sub('^\s+', '', line)))
+                datal.append([float(val) for val in xx])
+            dataa = numpy.array(datal)
+            minlo, maxlo, minla, maxla, qual = self.csec.get_mm()
+            if qual==0:
+                minlo, maxlo, minla, maxla, qual = self.csec.get_mm(2.0)
+                idxs = self.csec.get_grd_nodes_within_buffer(dataa[:,0],
+                                                         dataa[:,1],
+                                                         bffer,
+                                                         minlo, maxlo,
+                                                         minla, maxla)
+            if qual==1:
+                idxs = self.csec.get_grd_nodes_within_buffer_idl(dataa[:,0],
+                                                         dataa[:,1],
+                                                         bffer,
+                                                         minlo, maxlo,
+                                                         minla, maxla)
+            if idxs is not None and len(idxs):
+                boo = numpy.zeros_like(dataa[:, 0], dtype=int)
+                boo[idxs[0]] = 1
+                self.moho = numpy.squeeze(dataa[idxs,:])
+                f[label] = self.moho 
+        f.close()
 
 
-    def set_litho_moho_depth(self, filename, bffer=100.):
+    def set_litho_moho_depth(self, filename, tregfi, bffer=100.):
         """
         :parameter filename:
             The name of the file containing the LITHO model
@@ -183,31 +234,42 @@ class CrossSectionData:
             A numpy array
         """
         print('setting litho/moho')
-        datal = []
-        for line in open(filename, 'r'):
-            xx = re.split('\s+', re.sub('\s+$', '', re.sub('^\s+', '', line)))
-            datal.append([float(val) for val in xx])
-        dataa = numpy.array(datal)
-        minlo, maxlo, minla, maxla, qual = self.csec.get_mm()
-        if qual==0:
-            minlo, maxlo, minla, maxla, qual = self.csec.get_mm(2.0)
-            idxl = self.csec.get_grd_nodes_within_buffer(dataa[:,0],
-                                                     dataa[:,1],
-                                                     bffer,
-                                                     minlo, maxlo,
-                                                     minla, maxla)
-        if qual==1:
-            idxl = self.csec.get_grd_nodes_within_buffer_idl(dataa[:,0],
-                                                     dataa[:,1],
-                                                     bffer,
-                                                     minlo, maxlo,
-                                                     minla, maxla)
-        if idxl is not None and len(idxl):
-            boo = numpy.zeros_like(dataa[:, 0], dtype=int)
-            boo[idxl[0]] = 1
-            self.litho = numpy.squeeze(dataa[idxl,:])
+        do=0
+        f = h5py.File(tregfi, "a")
+        label = 'litho'
+        if label in f.keys():
+            self.litho = f[label].value
+        else: 
+            do=1
 
-    def set_gcmt(self, filename, bffer=75.):
+        if do==1:
+            datal = []
+            for line in open(filename, 'r'):
+                xx = re.split('\s+', re.sub('\s+$', '', re.sub('^\s+', '', line)))
+                datal.append([float(val) for val in xx])
+            dataa = numpy.array(datal)
+            minlo, maxlo, minla, maxla, qual = self.csec.get_mm()
+            if qual==0:
+                minlo, maxlo, minla, maxla, qual = self.csec.get_mm(2.0)
+                idxl = self.csec.get_grd_nodes_within_buffer(dataa[:,0],
+                                                         dataa[:,1],
+                                                         bffer,
+                                                         minlo, maxlo,
+                                                         minla, maxla)
+            if qual==1:
+                idxl = self.csec.get_grd_nodes_within_buffer_idl(dataa[:,0],
+                                                         dataa[:,1],
+                                                         bffer,
+                                                         minlo, maxlo,
+                                                         minla, maxla)
+            if idxl is not None and len(idxl):
+                boo = numpy.zeros_like(dataa[:, 0], dtype=int)
+                boo[idxl[0]] = 1
+                self.litho = numpy.squeeze(dataa[idxl,:])
+                f[label] = self.litho
+        f.close()
+
+    def set_gcmt(self, filename, tregfi, bffer=75.):
         """
         :parameter cmt_cat:
 
@@ -218,87 +280,137 @@ class CrossSectionData:
         loc = cmt_cat.data['longitude']
         lac = cmt_cat.data['latitude']
 
-        minlo, maxlo, minla, maxla, qual = self.csec.get_mm()
-        if qual==0:
-            idxs = self.csec.get_grd_nodes_within_buffer(loc,
-                                                     lac,
-                                                     bffer,
-                                                     minlo, maxlo,
-                                                     minla, maxla)
-        if qual==1:
-            idxs = self.csec.get_grd_nodes_within_buffer_idl(loc,
-                                                     lac,
-                                                     bffer,
-                                                     minlo, maxlo,
-                                                     minla, maxla)
-        if idxs is not None:
+        do=0
+        f = h5py.File(tregfi, "a")
+        label = 'cmts'
+        if label in f.keys():
+            idxs = f[label].value
+        else:
+            do=1
+
+        if do==1:
+            minlo, maxlo, minla, maxla, qual = self.csec.get_mm()
+            if qual==0:
+                idxs = self.csec.get_grd_nodes_within_buffer(loc,
+                                                         lac,
+                                                         bffer,
+                                                         minlo, maxlo,
+                                                         minla, maxla)
+            if qual==1:
+                idxs = self.csec.get_grd_nodes_within_buffer_idl(loc,
+                                                         lac,
+                                                         bffer,
+                                                         minlo, maxlo,
+                                                         minla, maxla)
+            if idxs is not None and len(idxs):
+                f[label]=idxs
+            f.close()
+
+        if idxs is not None and len(idxs):
             cmt_cat.select_catalogue_events(idxs)
             self.gcmt = cmt_cat
 
-    def set_topo(self, filename, bffer=1.0):
+    def set_topo(self, filename, tregfi, bffer=1.0):
         """
         :parameter filename:
             Name of the grid file containing the topography
         """
-        ####TO ADD:
-        #First check if bounds of topo and cross section are even overlapping
         print('setting topo')
-        datat = []
-        for line in open(filename, 'r'):
-            tt = re.split('\s+', re.sub('\s+$', '', re.sub('^\s+', '', line)))
-            datat.append([float(val) for val in tt])
-        datab = numpy.array(datat)
-        minlo, maxlo, minla, maxla, qual = self.csec.get_mm()
-        if qual==0:
-            minlo, maxlo, minla, maxla, qual = self.csec.get_mm(2.0)
-            idxb = self.csec.get_grd_nodes_within_buffer(datab[:,0],
-                                                     datab[:,1],
-                                                     bffer,
-                                                     minlo, maxlo,
-                                                     minla, maxla)
-        if qual==1:
-            idxb = self.csec.get_grd_nodes_within_buffer_idl(datab[:,0],
-                                                     datab[:,1],
-                                                     bffer,
-                                                     minlo, maxlo,
-                                                     minla, maxla)
-        if idxb is not None and len(idxb):
-            boo = numpy.zeros_like(datab[:, 0], dtype=int)
-            boo[idxb[0]] = 1
-            self.topo = numpy.squeeze(datab[idxb,:])
+        do=0
+        f = h5py.File(tregfi, "a")
+        label = 'topo'
+        if label in f.keys():
+            self.topo = f[label].value
+        else: 
+            do=1
 
-    def set_volcano(self, filename, bffer=75.):
+        if do==1:
+            datat = []
+            for line in open(filename, 'r'):
+                tt = re.split('\s+', re.sub('\s+$', '', re.sub('^\s+', '', line)))
+                datat.append([float(val) for val in tt])
+            datab = numpy.array(datat)
+            minlo, maxlo, minla, maxla, qual = self.csec.get_mm()
+            if qual==0:
+                minlo, maxlo, minla, maxla, qual = self.csec.get_mm(2.0)
+                idxb = self.csec.get_grd_nodes_within_buffer(datab[:,0],
+                                                         datab[:,1],
+                                                         bffer,
+                                                         minlo, maxlo,
+                                                         minla, maxla)
+            if qual==1:
+                idxb = self.csec.get_grd_nodes_within_buffer_idl(datab[:,0],
+                                                         datab[:,1],
+                                                         bffer,
+                                                         minlo, maxlo,
+                                                         minla, maxla)
+
+            if idxb is not None and len(idxb):
+                boo = numpy.zeros_like(datab[:, 0], dtype=int)
+                boo[idxb[0]] = 1
+                self.topo = numpy.squeeze(datab[idxb,:])
+            
+            f[label]=self.topo
+            f.close()
+
+    def set_volcano(self, filename, tregfi, bffer=75.):
         """
         :parameter filename:
             Name of the file containing the volcano list
         """
         print('setting volcano')
-        fin = open(filename, 'r')
-        datav = []
-        for line in fin:
-            vv = re.split('\s+', re.sub('^\s+', '', line))
-            datav.append((float(vv[0]), float(vv[1])))
 
-        vulc = numpy.array(datav)
-        minlo, maxlo, minla, maxla, qual = self.csec.get_mm()
-        if qual==0:
-            idxv = self.csec.get_grd_nodes_within_buffer(vulc[:,0],
-                                                     vulc[:,1],
-                                                     bffer,
-                                                     minlo, maxlo,
-                                                     minla, maxla)
-        if qual==1:
-            idxv = self.csec.get_grd_nodes_within_buffer_idl(vulc[:,0],
-                                                     vulc[:,1],
-                                                     bffer,
-                                                     minlo, maxlo,
-                                                     minla, maxla)
-        if idxv is not None and len(idxv):
-            voo = numpy.zeros_like(vulc[:, 0], dtype=int)
-            voo[idxv[0]] = 1
-            self.volc = numpy.squeeze(vulc[idxv,:])
-        fin.close()
-        print(self.volc)
+        do=0
+        f = h5py.File(tregfi, "a")
+        label = 'volc'
+        if label in f.keys():
+            self.volc = f[label].value
+        else: 
+            do=1
+
+        if do==1:
+            fin = open(filename, 'r')
+            datav = []
+            for line in fin:
+                vv = re.split('\s+', re.sub('^\s+', '', line))
+                datav.append((float(vv[0]), float(vv[1])))
+            fin.close()
+    
+            vulc = numpy.array(datav)
+            minlo, maxlo, minla, maxla, qual = self.csec.get_mm()
+            if qual==0:
+                idxv = self.csec.get_grd_nodes_within_buffer(vulc[:,0],
+                                                         vulc[:,1],
+                                                         bffer,
+                                                         minlo, maxlo,
+                                                         minla, maxla)
+            if qual==1:
+                idxv = self.csec.get_grd_nodes_within_buffer_idl(vulc[:,0],
+                                                         vulc[:,1],
+                                                         bffer,
+                                                         minlo, maxlo,
+                                                         minla, maxla)
+            if idxv is not None and len(idxv):
+                voo = numpy.zeros_like(vulc[:, 0], dtype=int)
+                voo[idxv[0]] = 1
+                self.volc = numpy.squeeze(vulc[idxv,:])
+                f[label]= self.volc
+                f.close
+
+    def set_myslab(self, filename, tregfi):
+       """
+       checking if slab has been picked already based on id number, 
+       and if it has, plots it
+       """
+       fin = open(filename, 'r')
+       datcs = []
+       for line in fin:
+           csa = line.split()
+           datcs.append((float(csa[0]), float(csa[1]), float(csa[2])))
+       fin.close()
+       crssec = numpy.array(datcs)
+       self.cs = numpy.squeeze(crssec)
+    
 
 class Trench:
     """
