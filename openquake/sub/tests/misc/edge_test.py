@@ -100,21 +100,21 @@ class CreateFromProfilesTest(unittest.TestCase):
         Create edges from profiles 0
         """
         # sampling: profile, edge
-        msh = create_from_profiles(self.profiles, 10, 5)
+        msh = create_from_profiles(self.profiles, 10, 5, False)
 
     def _test_create1(self):
         """
         Create edges from profiles 1
         """
         # sampling: profile, edge
-        msh = create_from_profiles(self.profiles1, 5, 5)
+        msh = create_from_profiles(self.profiles1, 5, 5, False)
 
     def _test_create2(self):
         """
         Create edges from profiles 2
         """
         # sampling: profile, edge
-        msh = create_from_profiles(self.profiles2, 20, 25)
+        msh = create_from_profiles(self.profiles2, 20, 25, False)
         #TODO
 
     def test_create3(self):
@@ -122,7 +122,7 @@ class CreateFromProfilesTest(unittest.TestCase):
         Create edges from profiles 2
         """
         # sampling: profile, edge
-        msh = create_from_profiles(self.profiles2, 50, 50)
+        msh = create_from_profiles(self.profiles2, 50, 50, False)
         #TODO
 
 

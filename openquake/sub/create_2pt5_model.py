@@ -159,7 +159,6 @@ def read_profiles_csv(foldername, upper_depth=0, lower_depth=1000,
     # reading files
     read_file = False
     for filename in sorted(glob.glob(os.path.join(foldername, 'cs*.csv'))):
-        print(filename)
         #
         # get the filename ID
         sid = re.sub('^cs_', '', re.split('\.', os.path.basename(filename))[0])
@@ -213,7 +212,6 @@ def read_profiles_csv(foldername, upper_depth=0, lower_depth=1000,
                                            lower_depth)
             #
             # final profile
-            print(len(j[0]))
             if len(j[0]) > 1:
                 tmpl = tmpa[j[0], :].tolist()
                 if pntb:

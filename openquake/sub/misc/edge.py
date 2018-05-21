@@ -94,7 +94,7 @@ def _get_mean_longitude(tmp):
     tmp = tmp[~np.isnan(tmp)]
     if len(tmp) < 1:
         raise ValueError('Unsufficient number of values')
-    tmp[tmp<0.] = tmp[tmp<0.] + 360
+    tmp[tmp < 0.] = tmp[tmp < 0.] + 360
     melo = np.mean(tmp)
     melo = melo if melo < 180 else melo - 360
     return melo
@@ -274,16 +274,18 @@ def create_faults(mesh, iedge, thickness, rot_angle, sampling):
     return plist
 
 
-def get_coords(line):
+def get_coords(line, idl):
     tmp = []
     for p in line.points:
         if p is not None:
-            p.longitude = p.longitude+360 if p.longitude<0 else p.longitude
+            if idl:
+                p.longitude = (p.longitude+360 if p.longitude < 0
+                               else p.longitude)
             tmp.append([p.longitude, p.latitude, p.depth])
     return tmp
 
 
-def create_from_profiles(profiles, profile_sd, edge_sd, align=False):
+def create_from_profiles(profiles, profile_sd, edge_sd, idl, align=False):
     """
     This creates a mesh from a set of profiles
 
@@ -324,6 +326,9 @@ def create_from_profiles(profiles, profile_sd, edge_sd, align=False):
     for pro in rprofiles:
         pnts = [(pnt.longitude, pnt.latitude, pnt.depth) for pnt in pro.points]
         pnts = np.array(pnts)
+
+        assert np.all(pnts[:, 0] <= 180) & np.all(pnts[:, 0] >= -180)
+
         dst = distance(pnts[:-1, 0], pnts[:-1, 1], pnts[:-1, 2],
                        pnts[1:, 0], pnts[1:, 1], pnts[1:, 2])
         np.testing.assert_allclose(dst, profile_sd, rtol=1.)
@@ -347,7 +352,7 @@ def create_from_profiles(profiles, profile_sd, edge_sd, align=False):
     maxnum = 0
     for i, pro in enumerate(rprofiles):
         j = int(add[i])
-        coo = get_coords(pro)
+        coo = get_coords(pro, idl)
         tmp = [[np.nan, np.nan, np.nan] for a in range(0, j)]
         if len(tmp):
             points = tmp + coo
@@ -365,12 +370,17 @@ def create_from_profiles(profiles, profile_sd, edge_sd, align=False):
         rprof[i] = np.array(pro)
     #
     # create edges
-    prfr = get_mesh(rprof, ref_idx, edge_sd)
+    prfr = get_mesh(rprof, ref_idx, edge_sd, idl)
     logging.info('Completed creation of resampled profiles')
+
+    #for p in prfr:
+        #print(np.amin(p[:, 0]), np.amax(p[:, 0]))
+        #assert np.all(p[:, 0] >= -180) & np.all(p[:, 0] <= 180)
+
     #
     # create the mesh
     if ref_idx > 0:
-        prfl = get_mesh_back(rprof, ref_idx, edge_sd)
+        prfl = get_mesh_back(rprof, ref_idx, edge_sd, idl)
     else:
         prfl = []
     prf = prfl + prfr
@@ -430,7 +440,7 @@ def create_from_profiles(profiles, profile_sd, edge_sd, align=False):
     return msh
 
 
-def get_mesh_back(pfs, rfi, sd):
+def get_mesh_back(pfs, rfi, sd, idl):
     """
     Compute resampled profiles in the backward direction from the reference
     profile and creates the portion of the mesh 'before' the reference profile.
@@ -442,6 +452,8 @@ def get_mesh_back(pfs, rfi, sd):
         Index of the reference profile
     :param sd:
         Sampling distance [in km]
+    :param boolean idl:
+        A flag used to specify cases where the model crosses the IDL
     :returns:
 
     """
@@ -521,7 +533,10 @@ def get_mesh_back(pfs, rfi, sd):
                 tmp = (j+1)*sd - rdist[k]
                 lo, la, _ = g.fwd(pl[k, 0], pl[k, 1], az12,
                                   tmp*hdist/tdist*1e3)
-                lo = lo+360 if lo<0 else lo
+
+                if idl:
+                    lo = lo+360 if lo < 0 else lo
+
                 de = pl[k, 2] + tmp*vdist/hdist
                 npr[laidx[k]+1][k] = [lo, la, de]
 
@@ -550,12 +565,15 @@ def get_mesh_back(pfs, rfi, sd):
                             for pro in pfs:
                                 tmp = [[p[0], p[1], p[2]] for p in pro]
                                 tmp = np.array(tmp)
-                                tmp[:,0] = ([x+360 if x<0 else x
-                                             for x in tmp[:,0]])
+                                if idl:
+                                    tmp[:, 0] = ([x+360 if x < 0 else x
+                                                  for x in tmp[:, 0]])
                                 ax.plot(tmp[:, 0], tmp[:, 1], tmp[:, 2],
                                         'x--b', markersize=2, label='original')
-                            p1[0] = p1[0]+360 if p1[0]<0 else p1[0]
-                            p2[0] = p2[0]+360 if p2[0]<0 else p2[0]
+                            if idl:
+                                p1[0] = p1[0]+360 if p1[0] < 0 else p1[0]
+                                p2[0] = p2[0]+360 if p2[0] < 0 else p2[0]
+                            #
                             # new profiles
                             for pro in npr:
                                 tmp = [[p[0], p[1], p[2]] for p in pro]
@@ -607,7 +625,7 @@ def get_mesh_back(pfs, rfi, sd):
     return tmp
 
 
-def get_mesh(pfs, rfi, sd):
+def get_mesh(pfs, rfi, sd, idl):
     """
     """
     g = Geod(ellps='WGS84')
@@ -625,12 +643,13 @@ def get_mesh(pfs, rfi, sd):
         # profiles
         pr = pfs[i+1]
         pl = pfs[i]
-
-        for ii in range(0,len(pl)):
-            ptmp = pl[ii][0]
-            ptmp = ptmp+360 if ptmp<0 else ptmp
-            pl[ii][0] = ptmp
-
+        #
+        # fixing IDL case
+        if idl:
+            for ii in range(0, len(pl)):
+                ptmp = pl[ii][0]
+                ptmp = ptmp+360 if ptmp < 0 else ptmp
+                pl[ii][0] = ptmp
         #
         # point in common on the two profiles
         cmm = np.logical_and(np.isfinite(pr[:, 2]), np.isfinite(pl[:, 2]))
@@ -688,7 +707,10 @@ def get_mesh(pfs, rfi, sd):
                 tmp = (j+1)*sd - rdist[k]
                 lo, la, _ = g.fwd(pl[k, 0], pl[k, 1], az12,
                                   tmp*hdist/tdist*1e3)
-                lo = lo+360 if lo < 0 else lo
+                #
+                # fixing longitudes 
+                if idl:
+                    lo = lo+360 if lo < 0 else lo
                 de = pl[k, 2] + tmp*vdist/hdist
                 npr[laidx[k]+1][k] = [lo, la, de]
 
@@ -713,8 +735,10 @@ def get_mesh(pfs, rfi, sd):
                             for ipro, pro in enumerate(pfs):
                                 tmp = [[p[0], p[1], p[2]] for p in pro]
                                 tmp = np.array(tmp)
-                                tmplon = tmp[:,0]
-                                tmplon = ([x+360 if x<0 else x for x in tmplon])
+                                tmplon = tmp[:, 0]
+                                if idl:
+                                    tmplon = ([x+360 if x < 0 else x
+                                               for x in tmplon])
                                 tmplon0 = tmplon[0]
                                 ax.plot(tmplon, tmp[:, 1], tmp[:, 2],
                                         'x--b', markersize=2)
@@ -723,12 +747,15 @@ def get_mesh(pfs, rfi, sd):
                             for pro in npr:
                                 tmp = [[p[0], p[1], p[2]] for p in pro]
                                 tmp = np.array(tmp)
-                                tmplon = tmp[:,0]
-                                tmplon = ([x+360 if x<0 else x for x in tmplon])
+                                tmplon = tmp[:, 0]
+                                if idl:
+                                    tmplon = ([x+360 if x < 0 else x
+                                               for x in tmplon])
                                 ax.plot(tmplon, tmp[:, 1], tmp[:, 2],
                                         'x--r', markersize=2)
-                            p1[0] = p1[0]+360 if p1[0]<0 else p1[0]
-                            p2[0] = p2[0]+360 if p2[0]<0 else p2[0]
+                            if idl:
+                                p1[0] = p1[0]+360 if p1[0] < 0 else p1[0]
+                                p2[0] = p2[0]+360 if p2[0] < 0 else p2[0]
                             ax.plot([p1[0]], [p1[1]], [p1[2]], 'og')
                             ax.plot([p2[0]], [p2[1]], [p2[2]], 'og')
                             ax.invert_zaxis()

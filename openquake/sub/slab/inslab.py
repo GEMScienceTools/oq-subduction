@@ -135,6 +135,9 @@ def _read_edge(filename):
 
 def create_planar_mesh(orig, ppar, spacing, lenght, width):
     """
+    TODO
+    2018.05.18 - This is currenly not used. Consider removing.
+
     :parameter orig:
     :parameter ppar:
     :parameter spacing:
@@ -146,8 +149,6 @@ def create_planar_mesh(orig, ppar, spacing, lenght, width):
     # https://www.physicsforums.com/threads/projecting-a-vector-onto-a-plane.496184/
     steep = np.cross(ppar, np.cross([0, 0, -1], ppar))
     steep = steep / sum(steep**2.)**0.5
-    print(steep)
-    print(ppar)
     #
     # we need to rotate the 'steep' vector of -90 deg around the normal vector
     # to the plane
@@ -155,8 +156,9 @@ def create_planar_mesh(orig, ppar, spacing, lenght, width):
 
 def regularize(mesh, spacing):
     """
+    TODO
+    2018.05.18 - This is currenly not used. Consider removing.
 
-    TODO Remove
     Fitting https://gist.github.com/amroamroamro/1db8d69b4b65e8bc66a6
     """
     #
