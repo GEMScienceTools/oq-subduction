@@ -63,6 +63,7 @@ def _read_profiles(path, prefix='cs'):
     path = os.path.join(path, '{:s}*.*'.format(prefix))
     profiles = []
     names = []
+    print(path)
     for filename in sorted(glob.glob(path)):
         profiles.append(_read_profile(filename))
         names.append(os.path.basename(filename))

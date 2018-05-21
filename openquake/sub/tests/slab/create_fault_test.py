@@ -22,7 +22,7 @@ class CreateFaultsTest(unittest.TestCase):
             profiles2.append(_read_profile(filename))
         #
         # building the mesh
-        self.msh = create_from_profiles(profiles2, 50, 50)
+        self.msh = create_from_profiles(profiles2, 50, 50, False)
 
     def test_create_faults_01(self):
         """
