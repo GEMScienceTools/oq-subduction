@@ -3,9 +3,6 @@
 
 import numpy as np
 
-from pyproj import Proj
-from openquake.sub.misc.edge import _get_mean_longitude
-
 
 def get_number_ruptures(omsh, rup_s, rup_d, f_strike=1, f_dip=1, wei=None):
     """
@@ -39,7 +36,7 @@ def get_number_ruptures(omsh, rup_s, rup_d, f_strike=1, f_dip=1, wei=None):
     return num_rup
 
 
-def get_ruptures(omsh, rup_s, rup_d, f_strike=1, f_dip=1, wei=None):
+def get_ruptures(omsh, rup_s, rup_d, f_strike=1, f_dip=1):
     """
     Given a :class:`~openquake.hazardlib.geo.mesh.Mesh` instance and the size
     of a rupture (in terms of the number of rows and cols) it yields all the
@@ -52,8 +49,6 @@ def get_ruptures(omsh, rup_s, rup_d, f_strike=1, f_dip=1, wei=None):
         Number of cols composing the rupture
     :param rup_d:
         Number of rows composing the rupture
-    :param wei:
-        Weights for each cell composing the fault surface
     :param f_strike:
         Floating distance along strike (multiple of sampling distance)
     :param f_dip:
@@ -69,9 +64,11 @@ def get_ruptures(omsh, rup_s, rup_d, f_strike=1, f_dip=1, wei=None):
         f_dip = int(np.floor(rup_d * abs(f_dip) + 1e-5))
         if f_dip < 1:
             f_dip = 1
-    for i in np.arange(0, omsh.lons.shape[1] - rup_s + 2, f_strike):
-        for j in np.arange(0, omsh.lons.shape[0] - rup_d + 2, f_dip):
+    print(omsh.shape)
+    for i in np.arange(0, omsh.lons.shape[1] - rup_s + 1, f_strike):
+        for j in np.arange(0, omsh.lons.shape[0] - rup_d + 1, f_dip):
             if (np.all(np.isfinite(omsh.lons[j:j + rup_d, i:i + rup_s]))):
+                print('idx', j,j + rup_d, i,i + rup_s)
                 yield ((omsh.lons[j:j + rup_d, i:i + rup_s],
                         omsh.lats[j:j + rup_d, i:i + rup_s],
                         omsh.depths[j:j + rup_d, i:i + rup_s]), j, i)
@@ -140,32 +137,45 @@ def get_discrete_dimensions(area, sampling, aspr):
     :param sampling:
     :param aspr:
     """
-    #
+    # computing possible length and width
     lng1 = np.ceil((area * aspr)**0.5/sampling)*sampling
     wdtA = np.ceil(lng1/aspr/sampling)*sampling
     wdtB = np.floor(lng1/aspr/sampling)*sampling
-
+    # computing possible length and width
     lng2 = np.floor((area * aspr)**0.5/sampling)*sampling
     wdtC = np.ceil(lng2/aspr/sampling)*sampling
     wdtD = np.floor(lng2/aspr/sampling)*sampling
+
+    print('len', lng1, lng2)
+    print('wdt', wdtA, wdtB, wdtC, wdtD)
+
     #
     dff = 1e10
     lng = None
     wdt = None
-    if abs(lng1*wdtA-area) < dff:
+    if abs(lng1*wdtA-area) < dff and lng1 > 0. and wdtA > 0.:
         lng = lng1
         wdt = wdtA
         dff = abs(lng1*wdtA-area)
-    if abs(lng1*wdtB-area) < dff:
+    if abs(lng1*wdtB-area) < dff and lng1 > 0. and wdtB > 0.:
         lng = lng1
         wdt = wdtB
         dff = abs(lng1*wdtB-area)
-    if abs(lng2*wdtC-area) < dff:
+    if abs(lng2*wdtC-area) < dff and lng2 > 0. and wdtC > 0.:
         lng = lng2
         wdt = wdtC
         dff = abs(lng2*wdtC-area)
-    if abs(lng2*wdtD-area) < dff:
+    if abs(lng2*wdtD-area) < dff and lng2 > 0. and wdtC > 0.:
         lng = lng2
         wdt = wdtD
         dff = abs(lng2*wdtD-area)
+    area_error = abs(lng*wdt-area)/area
+    # This is a check that verifies is the rupture size is compatible with the
+    # original value provided. If not, w
+    if (abs(wdt-sampling) < 1e-10 or abs(lng-sampling) < 1e-10 and
+            area_error > 0.3):
+        wdt = None
+        lng = None
+    elif area_error > 0.25 and lng > 1e-10 and wdt > 1e-10:
+        raise ValueError('Area discrepancy: ', area, lng*wdt, lng, wdt, aspr)
     return lng, wdt
