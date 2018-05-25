@@ -5,6 +5,7 @@ import os
 import re
 import sys
 import h5py
+import code
 import pickle
 import numpy as np
 import rtree
@@ -218,6 +219,7 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
                         wsum = sum(w[i])/asprs[aspr]
                         #
                         # create the gridded surface
+                        wtots = 0 
                         if len(rup[0]):
                             srfc = GriddedSurface(Mesh.from_coords(zip(rup[0],
                                                   rup[1], rup[2])))
@@ -226,6 +228,7 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
                             # element in the list is the container for the
                             # probability of occurrence. For the time being
                             # this is not defined
+                                
                             rups.append([srfc, wsum, dip, aspr, []])
                 # update the list of ruptures
                 lab = '{:.2f}'.format(mag)
@@ -288,6 +291,7 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
             # compute the probabilities
             p0 = np.exp(-ocr*tspan)
             p1 = 1. - p0
+            code.interact(local=locals())
             #
             #
             rups.append([srfc, wei, dip, aspr, [p0, p1]])

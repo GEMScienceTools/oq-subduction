@@ -1,9 +1,13 @@
 #!/usr/bin/env python
 import re
+import os
+import h5py
 import sys
+import time
 import pickle
 import numpy
 import scipy
+import logging
 import matplotlib
 import configparser
 import matplotlib.pyplot as plt
@@ -12,7 +16,7 @@ import matplotlib.gridspec as gridspec
 from obspy.imaging.beachball import beach
 
 from matplotlib.backend_bases import KeyEvent
-from matplotlib.patches import (Circle, Rectangle)
+from matplotlib.patches import (Circle, Rectangle, Ellipse)
 from matplotlib.collections import PatchCollection
 
 from openquake.sub.cross_sections import (CrossSection,
@@ -29,6 +33,11 @@ MAX_DIST = 1000
 fig_length = 10
 
 
+CLASSIFICATION = {'interface': 'blue',
+                  'crustal': 'purple',
+                  'slab': 'aquamarine',
+                  'unclassified': 'yellow'}
+
 KAVERINA = {'N': 'blue',
             'SS': 'green',
             'R': 'red',
@@ -44,12 +53,14 @@ def onclick(event):
 def _plot_h_eqk_histogram(axes, csda, dep_max=[], dis_max=[]):
     """
     """
-    if csda.ecat is None:
+    if (csda.ecat is None) and (csda.c_eqks is None):
         return
 
     plt.sca(axes)
-
-    newcat = csda.ecat
+    if csda.ecat:
+        newcat = csda.ecat
+    else:
+        newcat = csda.c_eqks
 
     olo = csda.csec.olo
     ola = csda.csec.ola
@@ -109,10 +120,15 @@ def _plot_h_eqk_histogram(axes, csda, dep_max=[], dis_max=[]):
 
 def _plot_v_eqk_histogram(axes, csda, dep_max=[], dis_max=[]):
 
-    if csda.ecat is None:
+    if (csda.ecat is None) and (csda.c_eqks is None):
         return
 
-    newcat = csda.ecat
+    plt.sca(axes)
+    if csda.ecat:
+        newcat = csda.ecat
+    else:
+        newcat = csda.c_eqks
+
     tmp_mag = newcat.data['magnitude'][:]
     tmp_dep = newcat.data['depth'][:]
     iii = numpy.nonzero((tmp_mag > 3.5) & (tmp_dep > 0.))
@@ -152,37 +168,41 @@ def _plot_v_eqk_histogram(axes, csda, dep_max=[], dis_max=[]):
     axes.invert_xaxis()
 
 def _plot_slab(axes, csda):
-#def _plot_slab1pt0(axes, csda):
     """
     :parameter axes:
     :parameter csda:
     """
-    if (csda.slab1pt0 is None) & (csda.slab2pt0 is None):
+
+    if (csda.slab1pt0 is None) & (csda.slab2pt0 is None) & (csda.cs is None):
         return
-    #if csda.slab2pt0 is None:
-    #    return
     plt.sca(axes)
     olo = csda.csec.olo
     ola = csda.csec.ola
     slab1pt0 = csda.slab1pt0
     slab2pt0 = csda.slab2pt0
-    iii=[]
-    jjj=[]
+    crssec = csda.cs
     if slab1pt0 is not None:
         slb1_dst = geodetic_distance(olo, ola, slab1pt0[:, 0], slab1pt0[:, 1])
         slb1_dep = slab1pt0[:, 2]
         iii = numpy.argsort(slb1_dst)
+        if len(iii) > 1:
+            plt.plot(slb1_dst[iii], -1*slb1_dep[iii], ':b', linewidth=1, alpha=0.5)
+            plt.text(slb1_dst[iii[-1]], -1*slb1_dep[iii[-1]], 'Slab1.0', fontsize=8)
     if slab2pt0 is not None:
         slb2_dst = geodetic_distance(olo, ola, slab2pt0[:, 0], slab2pt0[:, 1])
         slb2_dep = slab2pt0[:, 2]
         jjj = numpy.argsort(slb2_dst)
-    if len(iii) > 2:
-        plt.plot(slb1_dst[iii], -1*slb1_dep[iii], ':b', linewidth=3, zorder=30)
-        plt.text(slb1_dst[iii[-1]], -1*slb1_dep[iii[-1]], 'Slab1.0', fontsize=8)
+        if len(jjj) > 1:
+            plt.plot(slb2_dst[jjj], -1*slb2_dep[jjj], '-b', linewidth=1, alpha=0.5)
+            plt.text(slb2_dst[jjj[-1]], -1*slb2_dep[jjj[-1]], 'Slab2.0', fontsize=8)
+    if crssec is not None:
+        cs_dst = geodetic_distance(olo, ola, crssec[:, 0], crssec[:, 1])
+        cs_dep = crssec[:, 2]
+        kkk = numpy.argsort(cs_dst)
+        if len(kkk) > 1:
+            plt.plot(cs_dst[kkk], cs_dep[kkk], 'k', linewidth=2, zorder=30)
+            plt.text(cs_dst[kkk[-1]], cs_dep[kkk[-1]], 'picked slab', fontsize=8)
 
-    if len(jjj) > 2:
-        plt.plot(slb2_dst[jjj], -1*slb2_dep[jjj], '-b', linewidth=3, zorder=30)
-        plt.text(slb2_dst[jjj[-1]], -1*slb2_dep[jjj[-1]], 'Slab2.0', fontsize=8)
 
 def _plot_np_intersection(axes, csda):
     """
@@ -293,7 +313,7 @@ def _plot_moho(axes, csda):
     mdsts = geodetic_distance(olo, ola, moho[:, 0], moho[:, 1])
     iii = numpy.argsort(mdsts)
     plt.plot(mdsts[iii], moho[iii, 2], '--p', zorder=100, linewidth=2)
-#    plt.text(mdsts[iii[-1]], moho[iii[-1]], 'Crust1.0', fontsize=8)
+    #plt.text(mdsts[iii[-1]], moho[iii[-1]], 'Crust1.0', fontsize=8)
 
 def _plot_litho(axes, csda):
     """
@@ -312,7 +332,7 @@ def _plot_litho(axes, csda):
     lists = geodetic_distance(olo, ola, litho[:, 0], litho[:, 1])
     lll = numpy.argsort(lists)
     plt.plot(lists[lll], litho[lll, 2], '-.', zorder=100, linewidth=2)
-#    plt.text(lists[lll[-1]], litho[lll[-1]], 'Litho1.0', fontsize=8)
+    #plt.text(lists[lll[-1]], litho[lll[-1]], 'Litho1.0', fontsize=8)
 
 
 def _plot_topo(axes, csda):
@@ -330,6 +350,21 @@ def _plot_topo(axes, csda):
     jjj = numpy.argsort(tbsts)
     plt.plot(tbsts[jjj], ((-1*topo[jjj, 2])/1000.), '-g', zorder=100,
              linewidth=2)
+    
+def _plot_picked_cs(axes, csda):
+    """
+    :parameter axes:
+    :parameter csda:
+    """
+    if csda.picked_cs is None:
+        return
+    plt.sca(axes)
+    olo = csda.csec.olo
+    ola = csda.csec.ola
+    pcs = csda.picked_cs
+    csdsts = geodetic_distance(olo, ola, pcs[:, 0], pcs[:, 1])
+    plt.plot(csdsts, pcs[:, 2], 'b', zorder=100,
+             linewidth=2)
 
 
 def _plot_volc(axes, csda):
@@ -344,7 +379,7 @@ def _plot_volc(axes, csda):
     ola = csda.csec.ola
     patches = []
 
-    if (len(csda.volc)-1) >= 1:
+    if (len(csda.volc.flatten())) > 2:
         vuls = geodetic_distance(olo, ola,
                                  csda.volc[:, 0],
                                  csda.volc[:, 1])
@@ -364,7 +399,34 @@ def _plot_volc(axes, csda):
     axes.add_collection(vv)
 
 
+def _plot_c_eqks(axes, csda):
+    """
+    :parameter axes:
+    :parameter csda:
+    """
 
+    classcat = csda.c_eqks
+
+    olo = csda.csec.olo
+    ola = csda.csec.ola
+    dsts = geodetic_distance(olo, ola,
+                             classcat[:,0],
+                             classcat[:,1])
+    depths = classcat[:,2]
+    classes = classcat[:,3]
+    patches = []
+    for dst, dep, cls, mag in zip(dsts,
+                             classcat[:,2],
+                             classcat[:,3],
+                             classcat[:,4]):
+        circle = Circle((dst, dep), (mag*0.5)**1.5, ec='white')
+        patches.append(circle)
+    colors = classcat[:,3]
+    p = PatchCollection(patches, zorder=600, edgecolors='white')
+    p.set_alpha(0.6)
+    p.set_array(numpy.array(colors))
+    p.set_clim([1,4])
+    axes.add_collection(p)
 
 def _plot_eqks(axes, csda):
     """
@@ -394,7 +456,6 @@ def _plot_eqks(axes, csda):
     p.set_alpha(0.5)
     p.set_array(numpy.array(colors))
     axes.add_collection(p)
-    #plt.colorbar(p, fraction=0.1)
 
 
 def _print_legend(axes, depp, lnght):
@@ -421,8 +482,19 @@ def _print_legend(axes, depp, lnght):
         x += xstep
         axes.add_patch(box)
 
+def _print_legend2(axes, depp, lnght):
+    x = 7
+    ystep=11
+    y=depp-49
+    patches = []
+    for key in sorted(CLASSIFICATION):
+        box = matplotlib.patches.Ellipse(xy=(x, y), width=8, height=8,
+                                           color=CLASSIFICATION[key], clip_on=False)
+        y += ystep
+        box.set_alpha(0.5)
+        axes.add_patch(box)
 
-def _print_info(axes, csec, depp):
+def _print_info(axes, csec, depp, count):
     """
     """
     plt.sca(axes)
@@ -434,11 +506,32 @@ def _print_info(axes, csec, depp):
     axes.annotate(note, xy=(0.0, depp+30), xycoords='data',
                   annotation_clip=False, fontsize=8)
 
-    note = 'Cross-Section lenght: %.1f [km]' % (csec.length[0])
+    note = 'Cross-Section length: %.1f [km]' % (csec.length[0])
     plt.gca().annotate(note, xy=(0.0, depp+40), xycoords='data',
                        annotation_clip=False, fontsize=8)
 
-def plot(csda, depp, lnght):
+    ystep=11
+    xloc=17
+    note = 'Classification:'
+    plt.gca().annotate(note, xy=(4, depp-5*ystep), xycoords='data',
+                       annotation_clip=False, fontsize=8)
+    note = 'Crustal: %d' % (count[0])
+    plt.gca().annotate(note, xy=(xloc, depp-4*ystep), xycoords='data',
+                       annotation_clip=False, fontsize=8)
+
+    note = 'Interface: %d' % (count[1])
+    plt.gca().annotate(note, xy=(xloc, depp-3*ystep), xycoords='data',
+                       annotation_clip=False, fontsize=8)
+
+    note = 'Slab: %d' % (count[2])
+    plt.gca().annotate(note, xy=(xloc, depp-2*ystep), xycoords='data',
+                       annotation_clip=False, fontsize=8)
+
+    note = 'Unclassified: %d' % (count[3])
+    plt.gca().annotate(note, xy=(xloc, depp-1*ystep), xycoords='data',
+                       annotation_clip=False, fontsize=8)
+
+def plot(csda, depp, lnght, plottype):
     """
     """
     # Computing figure width
@@ -458,21 +551,25 @@ def plot(csda, depp, lnght):
     #ax3.set_xticklabels([])
     #ax3.set_yticklabels([])
 
-    _print_info(plt.subplot(gs[3]), csda.csec, depp)
+    _print_info(plt.subplot(gs[3]), csda.csec, depp, csda.count)
     _print_legend(plt.subplot(gs[3]), depp, lnght)
+    _print_legend2(plt.subplot(gs[3]), depp, lnght)
 
     # Plotting
-    _plot_eqks(plt.subplot(gs[3]), csda)
+    if 'classification' in plottype:
+        _plot_c_eqks(plt.subplot(gs[3]), csda)
+    else:
+        _plot_eqks(plt.subplot(gs[3]), csda)
+    _plot_h_eqk_histogram(plt.subplot(gs[1]), csda, depp, lnght)
+    _plot_v_eqk_histogram(plt.subplot(gs[2]), csda, depp, lnght)
     _plot_moho(plt.subplot(gs[3]), csda)
     _plot_litho(plt.subplot(gs[3]), csda)
     _plot_topo(plt.subplot(gs[3]), csda)
-#    _plot_volc(plt.subplot(gs[3]), csda)
+    _plot_volc(plt.subplot(gs[3]), csda)
 
     _plot_focal_mech(plt.subplot(gs[3]), csda)
     _plot_slab(plt.subplot(gs[3]), csda)
     _plot_np_intersection(plt.subplot(gs[3]), csda)
-    _plot_h_eqk_histogram(plt.subplot(gs[1]), csda, depp, lnght)
-    _plot_v_eqk_histogram(plt.subplot(gs[2]), csda, depp, lnght)
 
     # Main panel
     ax3 = plt.subplot(gs[3])
@@ -481,10 +578,10 @@ def plot(csda, depp, lnght):
     #plt.xlim([0, 500])
 
     plt.xlim([0, lnght])
-    #plt.xlim([-(0.15*lnght), lnght])
     plt.ylim([depp, -YPAD])
 
-    ax3.grid(which='both', zorder=20)
+#    ax3.grid(which='both', zorder=20)
+    #ax3.grid(which='both', zorder=20)
 
     # Showing results
     cid = fig.canvas.mpl_connect('button_press_event', onclick)
@@ -562,13 +659,35 @@ class LineBuilder:
 def plt_cs(olo, ola, depp, lnght, strike, ids, ini_filename):
     """
     """
+    treg_filename = './store_data/cs_%s.hdf5' % ids
+    logger = logging.getLogger('storing_data')
+    if not os.path.exists(treg_filename):
+        logger.info('Creating: {:s}'.format(treg_filename))
+        f = h5py.File(treg_filename, "w")
+        f.close()
+    else:
+        logger.info('{:s} exists'.format(treg_filename))
+ 
     csec = CrossSection(olo, ola, [lnght], [strike], ids)
     csda = CrossSectionData(csec)
 
     config = configparser.ConfigParser()
     config.read(ini_filename)
-    fname_trench = config['data']['trench_axis_filename']
-    fname_eqk_cat = config['data']['catalogue_pickle_filename']
+    start_time = time.time()
+    plottype = '';
+    if config.has_option('general','type'):
+        plottype = config['general']['type']
+    if 'classification' in plottype:
+        fname_class = config['data']['class_base']
+        fname_classlist = config['data']['class_list']
+        csda.set_catalogue_classified(fname_class,fname_classlist)
+    else:
+        fname_trench = config['data']['trench_axis_filename']
+        fname_eqk_cat = config['data']['catalogue_pickle_filename']
+        csda.set_trench_axis(fname_trench)
+        cat = pickle.load(open(fname_eqk_cat, 'rb'))
+        csda.set_catalogue(cat,75.)
+
     fname_slab1 = config['data']['slab1pt0_filename']
     fname_slab2 = config['data']['slab2pt0_filename']
     fname_crust = config['data']['crust1pt0_filename']
@@ -577,10 +696,11 @@ def plt_cs(olo, ola, depp, lnght, strike, ids, ini_filename):
     fname_topo = config['data']['topo_filename']
     fname_litho = config['data']['litho_filename']
     fname_volc = config['data']['volc_filename']
+    if config.has_option('data','cross_section_directory'):
+        fname_csdir = config['data']['cross_section_directory']
+        fname_myslab = os.path.join(fname_csdir,'cs_%s.csv'%ids)
+        csda.set_myslab(fname_myslab)
 
-    csda.set_trench_axis(fname_trench)
-    cat = pickle.load(open(fname_eqk_cat, 'rb'))
-    csda.set_catalogue(cat,75.)
     if re.search('[a-z]', fname_slab1):
         csda.set_slab(fname_slab1)
     if re.search('[a-z]', fname_slab2):
@@ -589,9 +709,10 @@ def plt_cs(olo, ola, depp, lnght, strike, ids, ini_filename):
     csda.set_gcmt(fname_gcmt,75.)
     csda.set_topo(fname_topo,0.50)
     csda.set_litho_moho_depth(fname_litho,75.)
-   # csda.set_volcano(fname_volc,25.)
+    csda.set_volcano(fname_volc,100.)
+    print("--- %s seconds ---" % (time.time() - start_time))
 
-    fig = plot(csda, depp, lnght)
+    fig = plot(csda, depp, lnght, plottype)
 
     return fig
 

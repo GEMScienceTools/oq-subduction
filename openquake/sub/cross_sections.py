@@ -1,4 +1,4 @@
-import code
+import os
 import re
 import numpy
 
@@ -11,6 +11,7 @@ from openquake.hazardlib.geo.geodetic import (min_distance_to_segment,
 from pyproj import Geod
 
 from openquake.hmtk.seismicity.selector import CatalogueSelector
+from openquake.hmtk.parsers.catalogue.csv_catalogue_parser import CsvCatalogueParser
 from openquake.hmtk.parsers.catalogue.gcmt_ndk_parser import ParseNDKtoGCMT
 
 
@@ -29,6 +30,9 @@ class CrossSectionData:
         self.topo = None
         self.litho = None
         self.volc = None
+        self.cs = None
+        self.c_eqks = None
+        self.count = [0]*4
 
     def set_trench_axis(self, filename):
         """
@@ -60,7 +64,57 @@ class CrossSectionData:
         newcat = selector.select_catalogue(boo)
         self.ecat = newcat
 
-    #def set_slab1pt0(self, filename, bffer=2.0):
+    def set_catalogue_classified(self, classes, classlist, bffer=40.):
+        """
+        """
+        print('setting catalogue')
+
+        types = classlist.split(',')
+        datal = []
+        for file_n in types:
+            filen = os.path.join(classes,file_n)
+            print(filen)
+            parser = CsvCatalogueParser(filen)
+            catalogueA = parser.read_file()
+            sel1 = CatalogueSelector(catalogueA, create_copy=True)
+            catalogue = sel1.within_magnitude_range(lower_mag=None,upper_mag=None)
+            print(len(catalogue.data['depth']))
+            na,na,na,na,qual = self.csec.get_mm()
+            print ("IMPORTANT! QUAL = ",qual)
+            if qual==1:
+                idxs = self.csec.get_eqks_within_buffer_idl(catalogue, bffer)
+            else:
+                idxs = self.csec.get_eqks_within_buffer(catalogue, bffer)
+            boo = numpy.zeros_like(catalogue.data['magnitude'], dtype=int)
+            boo[idxs] = 1
+            selector = CatalogueSelector(catalogue, create_copy=True)
+            selector = CatalogueSelector(catalogue, create_copy=True)
+            newcat = selector.select_catalogue(boo)
+            lon = newcat.data['longitude']
+            lon = ([x+360 if x<0 else x for x in lon])
+            lat = newcat.data['latitude']
+            depth = newcat.data['depth']
+            mag = newcat.data['magnitude']
+            cl_len = len(lat)
+            if str.lower(filen).find('crustal')>0:
+                cla = [1]*cl_len
+                self.count[0] = cl_len
+            if str.lower(filen).find('int')>0:
+                cla = [2]*cl_len
+                self.count[1] = cl_len
+            if str.lower(filen).find('slab')>0:
+                cla = [3]*cl_len
+                self.count[2] = cl_len
+            if str.lower(filen).find('unc')>0:
+                cla = [4]*cl_len
+                self.count[3] = cl_len
+            for g in range(len(lat)):
+                datal.append([lon[g], lat[g], depth[g], cla[g], mag[g]])
+
+            dataa = numpy.array(datal)
+            if len(cla):
+                self.c_eqks = numpy.squeeze(dataa[:, :])
+
     def set_slab(self, filename, bffer=2.0):
         """
         :parameter filename:
@@ -240,8 +294,6 @@ class CrossSectionData:
         :parameter filename:
             Name of the grid file containing the topography
         """
-        ####TO ADD:
-        #First check if bounds of topo and cross section are even overlapping
         print('setting topo')
         datat = []
         for line in open(filename, 'r'):
@@ -299,6 +351,21 @@ class CrossSectionData:
             self.volc = numpy.squeeze(vulc[idxv,:])
         fin.close()
         print(self.volc)
+
+    def set_myslab(self, filename):
+       """
+       checking if slab has been picked already based on id number, 
+       and if it has, plots it
+       """
+       fin = open(filename, 'r')
+       datcs = []
+       for line in fin:
+           csa = line.split()
+           datcs.append((float(csa[0]), float(csa[1]), float(csa[2])))
+       fin.close()
+       crssec = numpy.array(datcs)
+       self.cs = numpy.squeeze(crssec)
+
 
 class Trench:
     """

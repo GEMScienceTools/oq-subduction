@@ -1,4 +1,5 @@
 import code
+import os
 import re
 import numpy
 import h5py
@@ -12,6 +13,7 @@ from openquake.hazardlib.geo.geodetic import (min_distance_to_segment,
 from pyproj import Geod
 
 from openquake.hmtk.seismicity.selector import CatalogueSelector
+from openquake.hmtk.parsers.catalogue.csv_catalogue_parser import CsvCatalogueParser
 from openquake.hmtk.parsers.catalogue.gcmt_ndk_parser import ParseNDKtoGCMT
 
 
@@ -31,6 +33,8 @@ class CrossSectionData:
         self.litho = None
         self.volc = None
         self.cs = None
+        self.c_eqks = None
+        self.count = [0]*4
 
     def set_trench_axis(self, filename):
         """
@@ -53,15 +57,14 @@ class CrossSectionData:
         
         boo = numpy.zeros_like(catalogue.data['magnitude'], dtype=int)
 
-        do=0
-        f = h5py.File(tregfi, "a")
-        label = 'catalogue'
-        if label in f.keys():
-            #code.interact(local=locals())
-            idxs = f[label].value
-        else: 
-            do=1
-
+#        do=0
+#        f = h5py.File(tregfi, "a")
+#        label = 'catalogue'
+#        if label in f.keys():
+#            idxs = f[label].value
+#        else: 
+#            do=1
+        do=1
         if do==1:
             na,na,na,na,qual = self.csec.get_mm()
     
@@ -69,13 +72,71 @@ class CrossSectionData:
                 idxs = self.csec.get_eqks_within_buffer_idl(catalogue, bffer)
             else:
                 idxs = self.csec.get_eqks_within_buffer(catalogue, bffer)
-            f[label] = idxs
-            f.close()
+         #   f[label] = idxs
+         #   f.close()
 
         boo[idxs] = 1
         selector = CatalogueSelector(catalogue, create_copy=True)
         newcat = selector.select_catalogue(boo)
         self.ecat = newcat
+
+    def set_catalogue_classified(self, classes, classlist, bffer=40.):
+        """
+        """
+        print('setting catalogue')
+
+        types = classlist.split(',')
+        datal = []
+        for file_n in types:
+            filen = os.path.join(classes,file_n)
+            print(filen)
+            parser = CsvCatalogueParser(filen)
+            catalogueA = parser.read_file()
+            sel1 = CatalogueSelector(catalogueA, create_copy=True)
+            catalogue = sel1.within_magnitude_range(lower_mag=None,upper_mag=None)
+            print(len(catalogue.data['depth']))
+            na,na,na,na,qual = self.csec.get_mm()
+            print ("IMPORTANT! QUAL = ",qual)
+            if qual==1:
+                idxs = self.csec.get_eqks_within_buffer_idl(catalogue, bffer)
+            else:
+                idxs = self.csec.get_eqks_within_buffer(catalogue, bffer)
+            boo = numpy.zeros_like(catalogue.data['magnitude'], dtype=int)
+            boo[idxs] = 1
+            selector = CatalogueSelector(catalogue, create_copy=True)
+            selector = CatalogueSelector(catalogue, create_copy=True)
+            newcat = selector.select_catalogue(boo)
+            lon = newcat.data['longitude']
+            lon = ([x+360 if x<0 else x for x in lon])
+            lat = newcat.data['latitude']
+            depth = newcat.data['depth']
+            mag = newcat.data['magnitude']
+            cl_len = len(lat)
+            #cl_template = [1]*cl_len
+            if str.lower(filen).find('crustal')>0:
+                #cla = ['crustal']*cl_len
+                cla = [1]*cl_len
+                self.count[0] = cl_len
+            if str.lower(filen).find('int')>0:
+#                cla = ['interface']*cl_len
+                cla = [2]*cl_len
+                self.count[1] = cl_len
+            if str.lower(filen).find('slab')>0:
+#                cla = ['slab']*cl_len
+                cla = [3]*cl_len
+                self.count[2] = cl_len
+            if str.lower(filen).find('unc')>0:
+                #cla = ['unclassified']*cl_len
+                cla = [4]*cl_len
+                self.count[3] = cl_len
+#            code.interact(local=locals())
+            for g in range(len(lat)):
+                datal.append([lon[g], lat[g], depth[g], cla[g], mag[g]])
+
+            dataa = numpy.array(datal)
+            if len(cla):
+                self.c_eqks = numpy.squeeze(dataa[:, :])
+
 
     #def set_slab1pt0(self, filename, bffer=2.0):
     def set_slab(self, filename, tregfi, bffer=2.0):
@@ -108,7 +169,6 @@ class CrossSectionData:
 
         if chk==1:
             label = 'slab1pt0' 
-            #code.interact(local=locals())
             if label in f.keys():
                 self.slab1pt0 = f[label].value
             else:
@@ -147,7 +207,6 @@ class CrossSectionData:
                                                             bffer,
                                                             minlo, maxlo,
                                                             minla, maxla)
-            #code.interact(local=locals())
             if chk==1:
                 if idxslb is not None and len(idxslb):
                     self.slab1pt0 = numpy.squeeze(slab1pt0[idxslb, :])
@@ -349,8 +408,10 @@ class CrossSectionData:
                 boo = numpy.zeros_like(datab[:, 0], dtype=int)
                 boo[idxb[0]] = 1
                 self.topo = numpy.squeeze(datab[idxb,:])
-            
-            f[label]=self.topo
+            if self.topo:
+                f[label]=self.topo
+            else:
+                f[label]=None
             f.close()
 
     def set_volcano(self, filename, tregfi, bffer=75.):
@@ -620,7 +681,6 @@ def rsmpl_unsure(ix, iy, sampling_dist):
                                lo[idx+direct], la[idx+direct])
             else:
                 break
-    #code.interact(local=locals())
     return numpy.array(resampled_cs)
 
 
@@ -719,7 +779,6 @@ class CrossSection:
         xg = catalogue.data['longitude']
         yg = catalogue.data['latitude']
         line = Line([ Point(lo, la) for lo, la in zip(self.plo, self.pla) ])
-        #code.interact(local=locals())
         coo = [ (lo, la) for lo, la in zip(xg,yg) ]
         dst = get_min_distance(line, numpy.array(coo))
         return numpy.nonzero(abs(dst) <= buffer_distance)
