@@ -241,7 +241,8 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
                         w = weights[cl:rup_len-1, rl:rup_wid-1]
                         i = np.isfinite(w)
                         #
-                        # check for the international dateline
+                        # fix the longitudes outside the standard [-180, 180]
+                        # range
                         if np.any(rup[0] > 180):
                             rup[0][rup[0] > 180] = rup[0][rup[0] > 180] - 360
                         assert np.all(rup[0] <= 180) & np.all(rup[0] >= -180)
@@ -276,12 +277,13 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
     # closing the hdf5 file
     fh5.close()
     #
-    #
+    # logging info
     for lab in sorted(allrup.keys()):
         tmps = 'Number of ruptures for m={:s}: {:d}'
         logging.info(tmps.format(lab, len(allrup[lab])))
     #
-    # compute the normalizing factor for every rupture
+    # Compute the normalizing factor for every rupture. This is used only in
+    # the case when smoothing is used a reference for distributing occurrence
     twei = {}
     for mag, occr in mfd.get_annual_occurrence_rates():
         smm = 0.
@@ -315,7 +317,8 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
         numrup = len(allrup[lab])
         for srfc, wei, _, _, _ in allrup[lab]:
             #
-            # calculate the weight
+            # Adjust the weight. Every rupture will have a weight that is
+            # a combination between a flat rate and a 
             if twei[lab] > 1e-10:
                 wei = wei / twei[lab]
                 ocr = (wei * occr * (1.-uniform_fraction) +

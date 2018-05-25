@@ -1,0 +1,93 @@
+#!/usr/bin/env python
+
+import sys
+import numpy as np
+from subprocess import call
+
+from openquake.sub.misc.alpha_shape import alpha_shape
+from openquake.baselib import sap
+from openquake.man.model import read
+
+
+def plot(xml_fname, nus):
+    """
+    :param xml_fname:
+    """
+    if nus is None:
+        nus = 100
+    else:
+        nus = int(nus)
+    lomi = -110
+    loma = -70
+    lami = +5
+    lama = +20
+    size = 20
+
+    model, info = read(xml_fname, False)
+    ext = '-R{:.4f}/{:.4f}/{:.4f}/{:.4f}'.format(lomi, loma, lami, lama)
+    ext = '{:s} -JM{:.2f}'.format(ext, size)
+    eps = 'tmp.eps'
+    #
+    call('gmt set MAP_FRAME_TYPE plain', shell=True)
+    call('gmt set FONT_ANNOT_PRIMARY 10p,Helvetica', shell=True)
+    call('gmt set FONT_ANNOT_SECONDARY 12p,Helvetica', shell=True)
+    #
+    # plotting coasts
+    tmp = 'gmt pscoast {:s} -W -Di -N1 -B5/5 -K -Cwhite -Swhite > {:s}'
+    cmd = tmp.format(ext, eps)
+    call(cmd, shell=True)
+    #
+    # plotting ruptures
+    tmpfle = '/tmp/tmp.xyz'
+    tmp = 'gmt psxy {:s} {:s} -Sp -W0.05,red -O -K >> {:s}'
+    cmdA = tmp.format(tmpfle, ext, eps)
+    tmp = 'gmt psxy {:s} {:s} -W0.05,red -O -K -L >> {:s}'
+    cmdB = tmp.format(tmpfle, ext, eps)
+    #
+    #
+    for src in model:
+        idxs = set(np.random.random_integers(0, len(src.data), nus))
+        for i, d in enumerate(src.data):
+            if i in idxs:
+                lo = d[0].surface.mesh.lons
+                la = d[0].surface.mesh.lats
+                de = d[0].surface.mesh.depths
+                #
+                p = np.hstack((np.expand_dims(lo, 1),
+                               np.expand_dims(la, 1),
+                               np.expand_dims(de, 1)))
+                poly, _ = alpha_shape(p[:, 0], p[:, 1], .08)
+                alpha = []
+                for x, y in poly.exterior.coords:
+                    alpha.append([x, y])
+                alpha = np.array(alpha)
+                #
+                np.savetxt(tmpfle, p)
+                call(cmdA, shell=True)
+                #
+                np.savetxt(tmpfle, alpha)
+                call(cmdB, shell=True)
+
+    #
+    # closing
+    tmp = 'gmt pscoast {:s} -W -Di -N1 -B5/5 -O >> {:s}'
+    cmd = tmp.format(ext, eps)
+    call(cmd, shell=True)
+
+
+def main(argv):
+    """
+    For help type: ./plt_ruptures_mayavi
+    """
+    p = sap.Script(plot)
+    p.arg(name='xml_fname', help='Name of the .xml file')
+    p.opt(name='nus', help='Number of rupture samples')
+
+    if len(argv) < 1:
+        print(p.help())
+    else:
+        p.callfunc()
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

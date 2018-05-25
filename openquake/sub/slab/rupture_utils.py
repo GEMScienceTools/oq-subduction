@@ -64,11 +64,9 @@ def get_ruptures(omsh, rup_s, rup_d, f_strike=1, f_dip=1):
         f_dip = int(np.floor(rup_d * abs(f_dip) + 1e-5))
         if f_dip < 1:
             f_dip = 1
-    print(omsh.shape)
     for i in np.arange(0, omsh.lons.shape[1] - rup_s + 1, f_strike):
         for j in np.arange(0, omsh.lons.shape[0] - rup_d + 1, f_dip):
             if (np.all(np.isfinite(omsh.lons[j:j + rup_d, i:i + rup_s]))):
-                print('idx', j,j + rup_d, i,i + rup_s)
                 yield ((omsh.lons[j:j + rup_d, i:i + rup_s],
                         omsh.lats[j:j + rup_d, i:i + rup_s],
                         omsh.depths[j:j + rup_d, i:i + rup_s]), j, i)
@@ -145,10 +143,6 @@ def get_discrete_dimensions(area, sampling, aspr):
     lng2 = np.floor((area * aspr)**0.5/sampling)*sampling
     wdtC = np.ceil(lng2/aspr/sampling)*sampling
     wdtD = np.floor(lng2/aspr/sampling)*sampling
-
-    print('len', lng1, lng2)
-    print('wdt', wdtA, wdtB, wdtC, wdtD)
-
     #
     dff = 1e10
     lng = None
