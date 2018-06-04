@@ -14,8 +14,8 @@ import configparser
 # from mayavi import mlab
 from pyproj import Proj
 
-#from openquake.sub.plotting.tools import plot_mesh
-#from openquake.sub.plotting.tools import plot_mesh_mayavi
+# from openquake.sub.plotting.tools import plot_mesh
+# from openquake.sub.plotting.tools import plot_mesh_mayavi
 
 from openquake.sub.misc.edge import create_from_profiles
 from openquake.sub.quad.msh import create_lower_surface_mesh
@@ -33,7 +33,7 @@ from openquake.hazardlib.scalerel import get_available_scalerel
 from openquake.hmtk.seismicity.selector import CatalogueSelector
 from openquake.hazardlib.geo.surface.gridded import GriddedSurface
 
-from oqmbt.tools.smooth3d import Smoothing3D
+from openquake.mbt.tools.smooth3d import Smoothing3D
 
 
 def get_catalogue(cat_pickle_fname, treg_filename, label):
@@ -145,7 +145,7 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
     :param dips:
         A set of dip values
     :param sampling:
-        The distance in km used to 
+        The distance in km used to
     :param msr:
         A magnitude scaling relationship instance
     :param asprs:
@@ -210,6 +210,17 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
                     # what we use for the construction of the mesh
                     lng, wdt = get_discrete_dimensions(area, sampling, aspr)
                     #
+                    # If one of the dimensions is equal to 0 it means that
+                    # this aspect ratio cannot be represented with the value of
+                    # sampling
+                    if (lng is None or wdt is None or
+                            lng < 1e-10 or wdt < 1e-10):
+                        msg = 'Ruptures for magnitude {:.2f} and ar {:.2f}'
+                        msg = msg.format(mag, aspr)
+                        msg = '{:s} will not be defined'.format(msg)
+                        logging.warning(msg)
+                        continue
+                    #
                     # rupture lenght and rupture width as multiples of the
                     # mesh sampling distance
                     rup_len = int(lng/sampling) + 1
@@ -217,16 +228,21 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
                     #
                     # skipping small ruptures
                     if rup_len < 2 or rup_wid < 2:
+                        msg = 'Found an incompatible discrete rupture size'
+                        logging.warning(msg)
                         continue
                     #
                     # get_ruptures
                     for rup, rl, cl in get_ruptures(omsh, rup_len, rup_wid,
                                                     f_strike=float_strike,
                                                     f_dip=float_dip):
+                        #
+                        # getting weights from the smoothing
                         w = weights[cl:rup_len-1, rl:rup_wid-1]
                         i = np.isfinite(w)
                         #
-                        # check for the international dateline
+                        # fix the longitudes outside the standard [-180, 180]
+                        # range
                         if np.any(rup[0] > 180):
                             rup[0][rup[0] > 180] = rup[0][rup[0] > 180] - 360
                         assert np.all(rup[0] <= 180) & np.all(rup[0] >= -180)
@@ -261,12 +277,13 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
     # closing the hdf5 file
     fh5.close()
     #
-    #
+    # logging info
     for lab in sorted(allrup.keys()):
         tmps = 'Number of ruptures for m={:s}: {:d}'
         logging.info(tmps.format(lab, len(allrup[lab])))
     #
-    # compute the normalizing factor for every rupture
+    # Compute the normalizing factor for every rupture. This is used only in
+    # the case when smoothing is used a reference for distributing occurrence
     twei = {}
     for mag, occr in mfd.get_annual_occurrence_rates():
         smm = 0.
@@ -300,7 +317,8 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
         numrup = len(allrup[lab])
         for srfc, wei, _, _, _ in allrup[lab]:
             #
-            # calculate the weight
+            # Adjust the weight. Every rupture will have a weight that is
+            # a combination between a flat rate and a 
             if twei[lab] > 1e-10:
                 wei = wei / twei[lab]
                 ocr = (wei * occr * (1.-uniform_fraction) +
