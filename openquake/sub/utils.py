@@ -276,7 +276,11 @@ def build_complex_surface_from_edges(foldername):
     tedges = _read_edges(foldername)
     #
     # check edges
-    chks = _check_edges(tedges)
+    try:
+        chks = _check_edges(tedges)
+    except ValueError:
+        msg = 'Error while checking the edges in {.s}'.format(foldername)
+        print(msg)
     #
     # fix edges
     if np.any(chks > 0.):
