@@ -17,11 +17,11 @@ def plot(xml_fname, nus):
         nus = 100
     else:
         nus = int(nus)
-    lomi = -110
-    loma = -70
-    lami = +5
-    lama = +20
-    size = 20
+    lomi = -90
+    loma = -30
+    lami = -60
+    lama = +15
+    size = 14
 
     model, info = read(xml_fname, False)
     ext = '-R{:.4f}/{:.4f}/{:.4f}/{:.4f}'.format(lomi, loma, lami, lama)
@@ -33,7 +33,7 @@ def plot(xml_fname, nus):
     call('gmt set FONT_ANNOT_SECONDARY 12p,Helvetica', shell=True)
     #
     # plotting coasts
-    tmp = 'gmt pscoast {:s} -W -Di -N1 -B5/5 -K -Cwhite -Swhite > {:s}'
+    tmp = 'gmt pscoast {:s} -P -W -Di -N1 -B5/5 -K -Cwhite -Swhite > {:s}'
     cmd = tmp.format(ext, eps)
     call(cmd, shell=True)
     #
@@ -45,6 +45,9 @@ def plot(xml_fname, nus):
     cmdB = tmp.format(tmpfle, ext, eps)
     #
     #
+
+    from scipy.spatial import ConvexHull
+
     for src in model:
         idxs = set(np.random.random_integers(0, len(src.data), nus))
         for i, d in enumerate(src.data):
@@ -56,10 +59,20 @@ def plot(xml_fname, nus):
                 p = np.hstack((np.expand_dims(lo, 1),
                                np.expand_dims(la, 1),
                                np.expand_dims(de, 1)))
-                poly, _ = alpha_shape(p[:, 0], p[:, 1], .08)
+                x = np.hstack((np.expand_dims(lo, 1),
+                               np.expand_dims(la, 1)))
+
+                """
+                poly, _ = alpha_shape(p[:, 0], p[:, 1], .0002)
                 alpha = []
                 for x, y in poly.exterior.coords:
                     alpha.append([x, y])
+                """
+
+                alpha = []
+                hull = ConvexHull(x)
+                for j in hull.points:
+                    alpha.append(j)
                 alpha = np.array(alpha)
                 #
                 np.savetxt(tmpfle, p)

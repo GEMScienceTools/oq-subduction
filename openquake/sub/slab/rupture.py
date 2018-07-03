@@ -63,14 +63,17 @@ def get_catalogue(cat_pickle_fname, treg_filename, label):
 def smoothing(mlo, mla, mde, catalogue, hspa, vspa, fname):
     """
     :param mlo:
+        Longitudes
     :param mla:
+        Latitudes
     :param mde:
+        Depths [downward positive]
     :param catalogue:
-        An earthquake catalogue in the hmtk format
+        An earthquake catalogue instance in the hmtk format
     :param hspa:
-        Horizontal spacing [in km]
+        Grid horizontal spacing [in km]
     :param vspa:
-        Vertical spacing [in km]
+        Grid vertical spacing [in km]
     :param fname:
         Name of the hdf5 where to store the results
     :returns:
@@ -101,7 +104,7 @@ def smoothing(mlo, mla, mde, catalogue, hspa, vspa, fname):
 def spatial_index(smooth):
     """
     :param smooth:
-        An instance of the :class:``
+        An instance of the :class:`openquake.mbt.tools.smooth3d.Smoothing3D`
     """
 
     def _generator(mesh, p):
@@ -202,7 +205,10 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
             #
             # loop over magnitudes
             for mag, _ in mfd.get_annual_occurrence_rates():
-                area = msr.get_median_area(mag=mag, rake=-90)
+                #
+                # TODO this is assigns arbitrarly a rake of 90 degrees. It
+                # should be a configuration parameter
+                area = msr.get_median_area(mag=mag, rake=90)
                 rups = []
                 for aspr in asprs:
                     #
