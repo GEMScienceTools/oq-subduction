@@ -6,7 +6,8 @@ import glob
 import numpy as np
 
 from pathlib import Path
-from scipy.interpolate import CubicSpline
+from scipy import interpolate
+
 from openquake.hazardlib.geo import Line, Point
 
 
@@ -20,11 +21,11 @@ def _from_lines_to_array(lines):
     """
     out = []
     for line in lines:
-        for pnt in line:
+        for pnt in line.points:
             x = float(pnt.longitude)
             y = float(pnt.latitude)
             z = float(pnt.depth)
-        out.append([x, y, z])
+            out.append([x, y, z])
     return np.array(out)
 
 
@@ -36,6 +37,7 @@ def _from_line_to_array(line):
         A 2D :class:`numpy.ndarray` instance with 3 columns and as many rows
         as the number of points composing the line
     """
+    assert isinstance(line, Line)
     out = np.array((len(line.points, 3)))
     for i, pnt in enumerate(line.points):
         out[:, 0] = float(pnt.longitude)
@@ -46,7 +48,7 @@ def _from_line_to_array(line):
 
 class ProfileSet():
     """
-        A list of :class:`openquake.hazardlib.geo.line.Line` instances
+    A list of :class:`openquake.hazardlib.geo.line.Line` instances
     """
 
     def __init__(self, profiles=[]):
@@ -70,8 +72,33 @@ class ProfileSet():
             sid = '%03d' % int(sid)
         return cls(lines)
 
-    def get_cubic_spline(self):
-        """
-        """
+
+    def smooth(self, method='linear'):
+
         arr = _from_lines_to_array(self.profiles)
-        return CubicSpline(arr[:, 2], arr[:, 0:1])
+
+        x1 = np.amin(arr[:, 0])
+        x2 = np.amax(arr[:, 0])
+        y1 = np.amin(arr[:, 1])
+        y2 = np.amax(arr[:, 1])
+
+        xv = np.linspace(x1, x2, 100)
+        yv = np.linspace(y1, y2, 100)
+        grd = interpolate.griddata((arr[:, 0], arr[:, 1]), arr[:, 2],
+                                   (xv[None, :], yv[:, None]), method=method)
+
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.mplot3d import Axes3D
+        fig = plt.figure(figsize=(10, 8))
+        ax = fig.add_subplot(111, projection='3d')
+        for pro in self.profiles:
+            tmp = [[p.longitude, p.latitude, p.depth] for p in pro.points]
+            tmp = np.array(tmp)
+            ax.plot(tmp[:, 0], tmp[:, 1], tmp[:, 2], 'x--b', markersize=2)
+        print(grd.shape)
+        xg, yg = np.meshgrid(xv, yv)
+        print(xg.shape)
+        ax.plot(xg.flatten(), yg.flatten(), grd.flatten(), '.r', markersize=1)
+        plt.show()
+
+        return grd
