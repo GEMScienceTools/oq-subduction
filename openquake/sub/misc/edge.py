@@ -1,4 +1,5 @@
 """
+:module:`openquake.sub.misc.edge`
 """
 
 import re
@@ -19,6 +20,7 @@ from openquake.hazardlib.geo.geodetic import npoints_towards
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+
 
 EDGE_TOL = 0.2
 PROF_TOL = 0.4
@@ -190,14 +192,17 @@ def create_faults(mesh, iedge, thickness, rot_angle, sampling):
     rlow = iedge - dlt
     rupp = iedge + dlt + 1
     plist = []
+    clist = []
     #
     # loop over 'segments' composing the edge
     for ilist in ilists:
         temp_plist = []
+        check = False
         #
         # loop over the indexes of the nodes composing the edge 'segment' and
         # for each point we create a new profile using the dip angle
         for i, ic in enumerate(ilist):
+            loccheck = False
             #
             # initialise the indexes
             clow = ic - dlt
@@ -227,8 +232,8 @@ def create_faults(mesh, iedge, thickness, rot_angle, sampling):
             if np.sum(ii) > 4:
                 try:
                     _, ppar = plane_fit(tmp[ii, :])
-                except:
-                    raise ValueError('Plane interpolation failed')
+                except ValueError:
+                    print('Plane interpolation failed')
             else:
                 ppar = pppar
             #
@@ -262,16 +267,168 @@ def create_faults(mesh, iedge, thickness, rot_angle, sampling):
             # back-conversion to geographic coordinates
             llo, lla = p(xls*1e3, yls*1e3, inverse=True)
             #
+            # Check if this profile intersects with the previous one and fix
+            # the problem
+            if i > 0:
+                # last profile stored
+                pa = temp_plist[-1][0]
+                pb = temp_plist[-1][-1]
+                # new profile
+                pc = Point(llo[0], lla[0], zls[0])
+                pd = Point(llo[-1], lla[-1], zls[-1])
+                out = intersect(pa, pb, pc, pd)
+                if out:
+                    check = True
+                    loccheck = True
+
+                    """
+                    TODO
+                    2018.07.05 - This is experimental code trying to fix
+                    intersectiion profiles. The current solution simply
+                    removes the profiles causing problems.
+
+                    #
+                    # compute the direction cosines of the segment connecting
+                    # the top vertexes of two consecutive profiles
+                    x1, y1 = p(pa.longitude, pa.latitude)
+                    x1 /= 1e3
+                    y1 /= 1e3
+                    z1 = pa.depth
+                    x2, y2 = p(mesh[iedge, ic+1, 0], mesh[iedge, ic+1, 1])
+                    z2 = mesh[iedge, ic+1, 2]
+                    # x2, y2 = p(pc.longitude, pc.latitude)
+                    # z2 = pc.depth
+                    x2 /= 1e3
+                    y2 /= 1e3
+                    topdirc, _ = get_dcos(np.array([x1, y1, z1]),
+                                          np.array([x2, y2, z2]))
+                    # get the direction cosines between the first point of the
+                    # new segment and the last point of the previous segment
+                    # slightly shifted
+                    x1, y1 = p(pc.longitude, pc.latitude)
+                    x1 /= 1e3
+                    y1 /= 1e3
+                    z1 = pc.depth
+                    #
+                    x2, y2 = p(pb.longitude, pb.latitude)
+                    x2 /= 1e3
+                    y2 /= 1e3
+                    fctor = 5.5
+                    x2 += topdirc[0] * fctor * sampling
+                    y2 += topdirc[1] * fctor * sampling
+                    z2 = pb.depth + topdirc[2] * fctor * sampling
+                    tdirc, dst = get_dcos(np.array([x1, y1, z1]),
+                                          np.array([x2, y2, z2]))
+                    #
+                    # new sampling distance
+                    # news = dst/len(dstances)
+                    # dstances = np.arange(0, dst+0.05*dst, news)
+                    dstances = np.arange(0, thickness+0.05*sampling, sampling)
+                    xls = meshp[iedge, ic, 0] + dstances * tdirc[0]
+                    yls = meshp[iedge, ic, 1] + dstances * tdirc[1]
+                    zls = meshp[iedge, ic, 2] + dstances * tdirc[2]
+                    #
+                    # back-conversion to geographic coordinates
+                    llo, lla = p(xls*1e3, yls*1e3, inverse=True)
+                    # raise ValueError('Intersecting profiles')
+                    """
+            #
             # Update the profile list
             line = Line([Point(x, y, z) for x, y, z in zip(llo, lla, zls)])
-            temp_plist.append(line)
+            if not loccheck:
+                temp_plist.append(line)
+        #
+        # Check if some of the new profiles intersect
+        # if check:
+            # plot_profiles([temp_plist], mesh)
+        check_intersection(temp_plist)
         #
         # updating the list of profiles
         if len(temp_plist) > 1:
             plist.append(temp_plist)
+            if check:
+                clist.append(temp_plist)
+
+    # if len(clist):
+    #     plot_profiles(clist, mesh)
     #
     # return the list of profiles groups. Each group is a set of lines
     return plist
+
+
+def get_dcos(p1, p2):
+    """
+    Computes direction cosines given two points. The direction is from the
+    first point to the second one.
+
+    :param p1:
+    :param p2:
+    """
+    d = ((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2 + (p1[2]-p2[2])**2)**0.5
+    dcos = []
+    for i in range(3):
+        dcos.append((p2[i]-p1[i])/d)
+    return np.array(dcos), d
+
+
+def ccw(pa, pb, pc):
+    """
+    See https://bit.ly/2ISp0n9
+    """
+    return ((pc.latitude-pa.latitude)*(pb.longitude-pa.longitude) >
+            (pb.latitude-pa.latitude)*(pc.longitude-pa.longitude))
+
+
+def intersect(pa, pb, pc, pd):
+    """
+    Check if the segments pa-pb and pc-pd intersect
+    """
+    return (ccw(pa, pc, pd) != ccw(pb, pc, pd) and
+            ccw(pa, pb, pc) != ccw(pa, pb, pd))
+
+
+def check_intersection(llist):
+    """
+    :param llist:
+        A list of lines i.e profiles
+    """
+    for i in range(len(llist)-1):
+        pa = llist[i][0]
+        pb = llist[i][-1]
+        pc = llist[i+1][0]
+        pd = llist[i+1][-1]
+        out = intersect(pa, pb, pc, pd)
+        if out:
+            raise ValueError('Profiles intersect')
+
+
+def plot_profiles(profiles, mesh=None):
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection='3d')
+    fact = 0.1
+    #
+    if mesh is not None:
+
+        for i in range(mesh.shape[0]):
+            ix = np.isfinite(mesh[i, :, 0])
+            if np.any(mesh[i, ix, 0] > 180):
+                ii = np.nonzero(mesh[i, :, 0] > 180)
+                mesh[i, ii, 0] = mesh[i, ii, 0] - 360.
+            ax.plot(mesh[i, ix, 0], mesh[i, ix, 1], mesh[i, ix, 2]*fact, '-r')
+
+        for j in range(mesh.shape[1]):
+            ax.plot(mesh[:, j, 0], mesh[:, j, 1], mesh[:, j, 2]*fact, '-r')
+    #
+    for pro in profiles:
+        for i, line in enumerate(pro):
+            tmp = [[p.longitude, p.latitude, p.depth] for p in line.points]
+            tmp = np.array(tmp)
+            ax.plot(tmp[:, 0], tmp[:, 1], tmp[:, 2]*fact, 'x--b', markersize=2)
+            ax.text(tmp[0, 0], tmp[0, 1], tmp[0, 2]*fact, '{:d}'.format(i))
+    plt.xlabel('longitude')
+    plt.ylabel('latitude')
+    ax.invert_zaxis()
+    plt.show()
 
 
 def get_coords(line, idl):
@@ -296,6 +453,7 @@ def create_from_profiles(profiles, profile_sd, edge_sd, idl, align=False):
     :param edge_sd:
         The sampling distance along the edges
     :param align:
+        A boolean used to decide if profiles should be aligned at top
     :returns:
         A :class:`numpy.ndarray` instance with the coordinates of the mesh
     """
@@ -346,7 +504,7 @@ def create_from_profiles(profiles, profile_sd, edge_sd, idl, align=False):
         ccsum.append(shift[i] + ccsum[i-1])
     add = ccsum - min(ccsum)
     #
-    # create resampled profiles. Now the profiles should be all aligned from
+    # Create resampled profiles. Now the profiles should be all aligned from
     # the top
     rprof = []
     maxnum = 0
@@ -373,9 +531,9 @@ def create_from_profiles(profiles, profile_sd, edge_sd, idl, align=False):
     prfr = get_mesh(rprof, ref_idx, edge_sd, idl)
     logging.info('Completed creation of resampled profiles')
 
-    #for p in prfr:
-        #print(np.amin(p[:, 0]), np.amax(p[:, 0]))
-        #assert np.all(p[:, 0] >= -180) & np.all(p[:, 0] <= 180)
+    # for p in prfr:
+        # print(np.amin(p[:, 0]), np.amax(p[:, 0]))
+        # assert np.all(p[:, 0] >= -180) & np.all(p[:, 0] <= 180)
 
     #
     # create the mesh
@@ -447,7 +605,7 @@ def get_mesh_back(pfs, rfi, sd, idl):
 
     :param list pfs:
         Original profiles. Each profile is a :class:`numpy.ndarray` instance
-        with 3 columns and as many rows as the number of points included\
+        with 3 columns and as many rows as the number of points included
     :param int rfi:
         Index of the reference profile
     :param sd:
@@ -467,27 +625,30 @@ def get_mesh_back(pfs, rfi, sd, idl):
     rdist = [0 for _ in range(0, len(pfs[0]))]
     laidx = [0 for _ in range(0, len(pfs[0]))]
     #
-    # create list containing the new profiles
+    # Create list containing the new profiles. We start by adding the
+    # reference profile
     npr = list([copy.deepcopy(pfs[rfi])])
     #
-    # run for all the profiles from the reference one backward
+    # Run for all the profiles from the reference one backward
     for i in range(rfi, 0, -1):
         #
-        # profiles
+        # Set the profiles to be used for the construction of the mesh
         pr = pfs[i-1]
         pl = pfs[i]
         #
-        # point in common on the two profiles
+        # point in common on the two profiles i.e. points that in both the
+        # profiles are not NaN
         cmm = np.logical_and(np.isfinite(pr[:, 2]), np.isfinite(pl[:, 2]))
         #
-        # update last index
+        # Transform the indexes into integers and initialise the maximum
+        # index of the points in common
         cmmi = np.nonzero(cmm)[0].astype(int)
         mxx = 0
         for ll in laidx:
             if ll is not None:
                 mxx = max(mxx, ll)
         #
-        # update the last index
+        # Update indexes
         for x in range(0, len(pr[:, 2])):
             if x in cmmi and laidx[x] is None:
                 iii = []
@@ -502,7 +663,7 @@ def get_mesh_back(pfs, rfi, sd, idl):
                 laidx[x] = None
                 rdist[x] = 0
         #
-        # loop over the points in common between the two profiles
+        # Loop over the points in common between the two profiles
         for k in list(np.nonzero(cmm)[0]):
             #
             # compute azimuth and horizontal distance
@@ -514,8 +675,8 @@ def get_mesh_back(pfs, rfi, sd, idl):
             #
             # computing distance between adjacent points in two consecutive
             # profiles
-            dd = distance(pl[k, 0], pl[k, 1], pl[k, 2],
-                          pr[k, 0], pr[k, 1], pl[k, 2])
+            # dd = distance(pl[k, 0], pl[k, 1], pl[k, 2],
+            #               pr[k, 0], pr[k, 1], pl[k, 2])
             #
             # Checking difference between computed and expected distances
             # if abs(dd-tdist) > TOL*tdist:
@@ -558,18 +719,23 @@ def get_mesh_back(pfs, rfi, sd, idl):
                         logging.warning(tmps)
                         #
                         # plotting
-                        if 1:
+                        if True:
+                            print('plotting')
                             fig = plt.figure(figsize=(10, 8))
                             ax = fig.add_subplot(111, projection='3d')
                             # profiles
-                            for pro in pfs:
+                            for yyy, pro in enumerate(pfs):
                                 tmp = [[p[0], p[1], p[2]] for p in pro]
                                 tmp = np.array(tmp)
                                 if idl:
                                     tmp[:, 0] = ([x+360 if x < 0 else x
                                                   for x in tmp[:, 0]])
+                                #ax.plot(tmp[0, 0], tmp[0, 1], tmp[0, 2],
+                                #        'o', color='orange', markersize=6)
                                 ax.plot(tmp[:, 0], tmp[:, 1], tmp[:, 2],
-                                        'x--b', markersize=2, label='original')
+                                        'x--b', markersize=6, label='original')
+                                ax.text(tmp[0, 0], tmp[0, 1], tmp[0, 2],
+                                        '{:d}'.format(yyy))
                             if idl:
                                 p1[0] = p1[0]+360 if p1[0] < 0 else p1[0]
                                 p2[0] = p2[0]+360 if p2[0] < 0 else p2[0]
@@ -579,7 +745,7 @@ def get_mesh_back(pfs, rfi, sd, idl):
                                 tmp = [[p[0], p[1], p[2]] for p in pro]
                                 tmp = np.array(tmp)
                                 ax.plot(tmp[:, 0], tmp[:, 1], tmp[:, 2],
-                                        'x--r', markersize=2)
+                                        's--r', markersize=4)
                             ax.plot([p1[0]], [p1[1]], [p1[2]], 'og')
                             ax.plot([p2[0]], [p2[1]], [p2[2]], 'og')
 
@@ -594,7 +760,8 @@ def get_mesh_back(pfs, rfi, sd, idl):
                             ax.view_init(50, 55)
                             plt.show()
 
-                        raise ValueError('')
+                        tmps = 'The mesh spacing exceeds the tolerance limits'
+                        raise ValueError(tmps)
 
                 laidx[k] += 1
             rdist[k] = tdist - sd*ndists + rdist[k]
@@ -693,7 +860,8 @@ def get_mesh(pfs, rfi, sd, idl):
                           pr[k, 0], pr[k, 1], pl[k, 2])
             # >>> TOLERANCE
             if abs(dd-tdist) > 0.5*tdist:
-                tmps = 'Distances: {:f} {:f}'
+                tmps = 'Error while building the mesh'
+                tmps += '\nDistances: {:f} {:f}'
                 raise ValueError(tmps.format(dd, tdist))
             #
             # adding new points along the edge with index k
@@ -708,7 +876,7 @@ def get_mesh(pfs, rfi, sd, idl):
                 lo, la, _ = g.fwd(pl[k, 0], pl[k, 1], az12,
                                   tmp*hdist/tdist*1e3)
                 #
-                # fixing longitudes 
+                # fixing longitudes
                 if idl:
                     lo = lo+360 if lo < 0 else lo
                 de = pl[k, 2] + tmp*vdist/hdist
@@ -761,7 +929,7 @@ def get_mesh(pfs, rfi, sd, idl):
                             ax.invert_zaxis()
                             ax.view_init(50, 55)
                             plt.show()
-                        raise ValueError('')
+                        #raise ValueError('')
                 laidx[k] += 1
             rdist[k] = tdist - sd*ndists + rdist[k]
             assert rdist[k] < sd
@@ -905,7 +1073,7 @@ def _resample_edge_with_direction(edge, sampling_dist, reference_idx,
             downd = distance(slo, sla, sde, lo[idx], la[idx], de[idx])
             upd = distance(slo, sla, sde, lo[idx+direct], la[idx+direct],
                            de[idx+direct])
-
+            #
             # >>> TOLERANCE
             if abs(tot - (downd + upd)) > tot*0.05:
                 print('     upd, downd, tot', upd, downd, tot)
