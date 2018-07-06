@@ -16,6 +16,12 @@ TOLERANCE = 0.2
 
 def profiles_depth_alignment(pro1, pro2):
     """
+    :param pro1:
+        An instance of :class:`openquake.hazardlib.geo.line.Line`
+    :param pro2:
+        An instance of :class:`openquake.hazardlib.geo.line.Line`
+    :returns:
+        AA
     """
     coo1 = [(pnt.longitude, pnt.latitude, pnt.depth) for pnt in pro1.points]
     coo2 = [(pnt.longitude, pnt.latitude, pnt.depth) for pnt in pro2.points]
@@ -35,9 +41,9 @@ def profiles_depth_alignment(pro1, pro2):
     # Creating two arrays of the same lenght
     coo1 = np.array(coo1)
     coo2 = np.array(coo2[:coo1.shape[0]])
+    #
+    # The two profiles require at least 5 points
     if len(coo1) > 5 and len(coo2) > 5:
-        #
-        #
         indexes = np.arange(-2, 3)
         dff = np.zeros_like(indexes)
         for i, shf in enumerate(indexes):

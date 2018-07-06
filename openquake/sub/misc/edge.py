@@ -284,7 +284,7 @@ def create_faults(mesh, iedge, thickness, rot_angle, sampling):
                     """
                     TODO
                     2018.07.05 - This is experimental code trying to fix
-                    intersectiion profiles. The current solution simply
+                    intersection of profiles. The current solution simply
                     removes the profiles causing problems.
 
                     #
@@ -557,16 +557,20 @@ def create_from_profiles(profiles, profile_sd, edge_sd, idl, align=False):
     """
     #
     # --------------------------------------------------------------------------
-    if 0:
+    if False:
         fig = plt.figure(figsize=(10, 8))
         ax = fig.add_subplot(111, projection='3d')
         for pro in profiles:
             tmp = [[p.longitude, p.latitude, p.depth] for p in pro.points]
             tmp = np.array(tmp)
+            idx = np.nonzero(tmp[:,0] > 180)
+            tmp[idx, 0] -= 360.
             ax.plot(tmp[:, 0], tmp[:, 1], tmp[:, 2], 'x--b', markersize=2)
         for i, tmp in enumerate(rprof):
             idx = np.isfinite(tmp[:, 0])
             iii = np.nonzero(idx)[0][0]
+            jjj = np.nonzero(tmp[:, 0] > 180)
+            tmp[jjj, 0] -= 360.
             ax.plot(tmp[idx, 0], tmp[idx, 1], tmp[idx, 2], '^-r', markersize=5)
             ax.text(tmp[iii, 0], tmp[iii, 1], tmp[iii, 2], '{:d}'.format(i))
 
@@ -579,6 +583,8 @@ def create_from_profiles(profiles, profile_sd, edge_sd, idl, align=False):
                         np.all(np.isfinite(prf[k+1][j]))):
                     pa = prf[k][j]
                     pb = prf[k+1][j]
+                    pa[0] = pa[0] if pa[0] < 180 else pa[0] - 360
+                    pb[0] = pb[0] if pb[0] < 180 else pb[0] - 360
                     ax.plot([pa[0], pb[0]], [pa[1], pb[1]],
                             [pa[2], pb[2]], '-', color='cyan')
                 # plotting edges
@@ -586,15 +592,42 @@ def create_from_profiles(profiles, profile_sd, edge_sd, idl, align=False):
                         np.all(np.isfinite(prf[k][j+1]))):
                     pa = prf[k][j]
                     pb = prf[k][j+1]
+                    pa[0] = pa[0] if pa[0] < 180 else pa[0] - 360
+                    pb[0] = pb[0] if pb[0] < 180 else pb[0] - 360
                     ax.plot([pa[0], pb[0]], [pa[1], pb[1]],
                             [pa[2], pb[2]], '-g')
         ax.invert_zaxis()
         ax.view_init(50, 55)
         plt.show()
+        exit(0)
     # --------------------------------------------------------------------------
     #
     # convert from profiles to edges
     msh = msh.swapaxes(0, 1)
+    msh = fix_mesh(msh)
+    return msh
+
+
+def fix_mesh(msh):
+    """
+    """
+    for i in range(msh.shape[0]):
+        ru = i+1
+        rl = i-1
+        for j in range(msh.shape[1]):
+            cu = j+1
+            cl = j-1
+
+            trl = False if cl < 0 else np.isfinite(msh[i, cl, 0])
+            tru = False if cu > msh.shape[1]-1 else np.isfinite(msh[i, cu, 0])
+            tcl = False if rl < 0 else np.isfinite(msh[rl, j, 0])
+            tcu = False if ru > msh.shape[0]-1 else np.isfinite(msh[ru, j, 0])
+
+            check_row = trl or tru
+            check_col = tcl or tcu
+
+            if not (check_row and check_col):
+                msh[i, j, :] = np.nan
     return msh
 
 

@@ -138,7 +138,7 @@ def spatial_index(smooth):
 
 def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
                     r, values, oms, tspan, hdf5_filename, uniform_fraction,
-                    proj, idl):
+                    proj, idl, align=False):
     """
     Create inslab ruptures using an MFD, a time span. The dictionary 'oms'
     contains lists of profiles for various values of dip. The ruptures are
@@ -174,6 +174,8 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
     :param uniform_fraction:
         Fraction of the overall rate for a given magnitude bin to be
         distributed uniformly to all the ruptures for the same mag bin.
+    :param align:
+        Profile alignment flag
     """
 
     fh5 = h5py.File(hdf5_filename, 'a')
@@ -191,8 +193,7 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
             #
             # create in-slab virtual fault - `lines` is the list of profiles
             # to be used for the construction of the virtual fault surface
-            smsh = create_from_profiles(lines, sampling, sampling, idl,
-                                        align=False)
+            smsh = create_from_profiles(lines, sampling, sampling, idl, align)
             omsh = Mesh(smsh[:, :, 0], smsh[:, :, 1], smsh[:, :, 2])
             #
             # store data in the hdf5 file
@@ -428,6 +429,13 @@ def calculate_ruptures(ini_fname, only_plt=False, ref_fdr=None):
     else:
         idl = False
     #
+    # IDL
+    align = False
+    if config.has_option('main', 'profile_alignment'):
+        tmps = config.get('main', 'profile_alignment')
+        if re.search('true', tmps.lower()):
+            align = True
+    #
     # set profile folder
     path = config.get('main', 'profile_folder')
     path = os.path.abspath(os.path.join(ref_fdr, path))
@@ -612,7 +620,7 @@ def calculate_ruptures(ini_fname, only_plt=False, ref_fdr=None):
     # in this case
     allrup = create_ruptures(mfd, dips, sampling, msr, asprs, float_strike,
                              float_dip, r, values, ohs, 1., hdf5_filename,
-                             uniform_fraction, proj, idl)
+                             uniform_fraction, proj, idl, align)
 
 
 def main(argv):

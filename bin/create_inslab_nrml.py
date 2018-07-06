@@ -74,7 +74,7 @@ def create_nrml_source(rup, mag, sid, name, tectonic_region_type):
     return src
 
 
-def create(label, rupture_hdf5_fname, output_folder, investigation_t):
+def create(label, rupture_hdf5_fname, output_folder, investigation_t, srcid):
     """
     :param label:
     :param rupture_hdf5_fname:
@@ -104,7 +104,10 @@ def create(label, rupture_hdf5_fname, output_folder, investigation_t):
         # source ID
         mags = re.sub('\.', 'pt', mag)
         sid = 'src_{:s}_{:s}'.format(label, mags)
+        if srcid:
+            sid += '_{:s}'.format(srcid)
         name = 'Ruptures for mag bin {:s}'.format(mags)
+
         #
         # creates a non-parametric seismic source
         src = create_nrml_source(grp, float(mag), sid, name, trt)
@@ -128,6 +131,7 @@ def main(argv):
     p.arg(name='rupture_hdf5_fname', help='hdf5 file with the ruptures')
     p.arg(name='output_folder', help='Name of the output folder')
     p.arg(name='investigation_t', help='Investigation time')
+    p.opt(name='srcid', help='Source ID')
 
     if len(argv) < 1:
         print(p.help())
