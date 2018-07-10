@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+"""
+:module:`openquake.sub.slab.rupture`
+"""
+
+
 import os
 import re
 import sys
@@ -138,7 +143,7 @@ def spatial_index(smooth):
 
 def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
                     r, values, oms, tspan, hdf5_filename, uniform_fraction,
-                    proj, idl, align=False):
+                    proj, idl, align=False, inslab=False):
     """
     Create inslab ruptures using an MFD, a time span. The dictionary 'oms'
     contains lists of profiles for various values of dip. The ruptures are
@@ -159,9 +164,9 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
     :param float_dip:
         Along dip floating parameter
     :param r:
-        TODO
+        Spatial index
     :param values:
-        TODO
+        Smothing results
     :param oms:
         A dictionary. Values of dip are used as keys while values of the
         dictionary are list of lists. Every list contains one or several
@@ -177,23 +182,51 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
     :param align:
         Profile alignment flag
     """
-
+    #
+    # hdf5 file
     fh5 = h5py.File(hdf5_filename, 'a')
     grp_inslab = fh5.create_group('inslab')
     #
     allrup = {}
     iscnt = 0
     for dip in dips:
+        print('------------------------------------', dip)
         for mi, lines in enumerate(oms[dip]):
+            print('------------------------------------', mi)
             #
             # filter out small surfaces i.e. surfaces defined by less than
             # three profiles
             if len(lines) < 3:
                 continue
             #
+            # checking initial profiles
+            for l in lines:
+                ps = np.array([[p.longitude, p.latitude, p.depth] for p in
+                               l.points])
+                assert not np.any(np.isnan(ps))
+            #
             # create in-slab virtual fault - `lines` is the list of profiles
             # to be used for the construction of the virtual fault surface
+
             smsh = create_from_profiles(lines, sampling, sampling, idl, align)
+
+            outp = '/Users/mpagani/Repos/vnv/src/oq-subduction/openquake/sub/tests/data/profiles01'
+            if np.any(np.isnan(smsh)):
+                for jj, l in enumerate(lines):
+                    out = open(os.path.join(outp, 'cs_{:02d}.txt'.format(jj)), 'w')
+                    for p in l.points:
+                        out.write('{:f} {:f} {:f}\n'.format(p.longitude,
+                                                            p.latitude,
+                                                            p.depth))
+                    out.close()
+                # raise ValueError('NaN values')
+
+            # This checks that the virtual fault created does not contain NaN
+            # values
+            if np.any(np.isnan(smsh)):
+                tmps = 'dip {:.2f} index: {:d} has NaN values'
+                logging.warning(tmps.format(dip, mi))
+            # create mesh
             omsh = Mesh(smsh[:, :, 0], smsh[:, :, 1], smsh[:, :, 2])
             #
             # store data in the hdf5 file
@@ -202,7 +235,7 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
             # get centroids for a given virtual fault surface
             ccc = get_centroids(smsh[:, :, 0], smsh[:, :, 1], smsh[:, :, 2])
             #
-            # get weights - this assigns to each cell centroid the weight of
+            # Get weights - this assigns to each cell centroid the weight of
             # the closest node in the values array
             weights = get_weights(ccc, r, values, proj)
             #
@@ -214,6 +247,7 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
                 area = msr.get_median_area(mag=mag, rake=90)
                 rups = []
                 for aspr in asprs:
+                    print('{:5.2f} {:5.2f} '.format(mag, aspr), end='')
                     #
                     # IMPORTANT: the sampling here must be consistent with
                     # what we use for the construction of the mesh
@@ -242,6 +276,7 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
                         continue
                     #
                     # get_ruptures
+                    counter = 0
                     for rup, rl, cl in get_ruptures(omsh, rup_len, rup_wid,
                                                     f_strike=float_strike,
                                                     f_dip=float_dip):
@@ -252,26 +287,41 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
                         #
                         # fix the longitudes outside the standard [-180, 180]
                         # range
-                        if np.any(rup[0] > 180):
-                            rup[0][rup[0] > 180] = rup[0][rup[0] > 180] - 360
-                        assert np.all(rup[0] <= 180) & np.all(rup[0] >= -180)
+                        ij = np.isfinite(rup[0])
+                        iw = np.nonzero(rup[0][ij] > 180.)
+                        rup[0][ij[iw]] -= 360.
+                        #if np.any(rup[0][j] > 180):
+                        #    rup[0][rup[0] > 180.] = rup[0][rup[0] > 180.] - 360.
+                        assert np.all(rup[0][ij] <= 180)
+                        assert np.all(rup[0][ij] >= -180)
+
+                        rx = rup[0][ij].flatten()
+                        ry = rup[1][ij].flatten()
+                        rz = rup[2][ij].flatten()
+
                         #
                         # normalize the weight using the aspect ratio weight
                         wsum = sum(w[i])/asprs[aspr]
                         #
                         # create the gridded surface. We need at least four
                         # vertexes
-                        if rup[0].size > 3:
-                            srfc = GriddedSurface(Mesh.from_coords(zip(rup[0],
-                                                                       rup[1],
-                                                                       rup[2]),
+                        if len(rx) > 3:
+                        #if rup[0].size > 3:
+                            srfc = GriddedSurface(Mesh.from_coords(zip(rx,
+                                                                       ry,
+                                                                       rz),
                                                                    sort=False))
+                            #srfc = GriddedSurface(Mesh.from_coords(zip(rup[0],
+                            #                                           rup[1],
+                            #                                           rup[2]),
+                            #                                       sort=False))
                             #
                             # update the list with the ruptures - the last
                             # element in the list is the container for the
                             # probability of occurrence. For the time being
                             # this is not defined
                             rups.append([srfc, wsum, dip, aspr, []])
+                            counter += 1
                 #
                 # update the list of ruptures
                 lab = '{:.2f}'.format(mag)
@@ -279,6 +329,7 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
                     allrup[lab] += rups
                 else:
                     allrup[lab] = rups
+                print('# rup:', counter)
             #
             # update counter
             iscnt += 1
@@ -327,7 +378,7 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
         for srfc, wei, _, _, _ in allrup[lab]:
             #
             # Adjust the weight. Every rupture will have a weight that is
-            # a combination between a flat rate and a 
+            # a combination between a flat rate and a variable rate
             if twei[lab] > 1e-10:
                 wei = wei / twei[lab]
                 ocr = (wei * occr * (1.-uniform_fraction) +
@@ -546,7 +597,6 @@ def calculate_ruptures(ini_fname, only_plt=False, ref_fdr=None):
         vsc = 0.01
         import matplotlib.pyplot as plt
         from mpl_toolkits.mplot3d import Axes3D
-
         fig = plt.figure(figsize=(10, 8))
         ax = fig.add_subplot(111, projection='3d')
         #
@@ -597,7 +647,8 @@ def calculate_ruptures(ini_fname, only_plt=False, ref_fdr=None):
     print('Creating ', hdf5_filename)
     fh5 = h5py.File(hdf5_filename, 'w')
     grp_slab = fh5.create_group('slab')
-    grp_slab.create_dataset('top', data=msh)
+    dset = grp_slab.create_dataset('top', data=msh)
+    dset.attrs['spacing'] = sampling
     grp_slab.create_dataset('bot', data=lmsh)
     fh5.close()
     #
@@ -620,7 +671,7 @@ def calculate_ruptures(ini_fname, only_plt=False, ref_fdr=None):
     # in this case
     allrup = create_ruptures(mfd, dips, sampling, msr, asprs, float_strike,
                              float_dip, r, values, ohs, 1., hdf5_filename,
-                             uniform_fraction, proj, idl, align)
+                             uniform_fraction, proj, idl, align, True)
 
 
 def main(argv):

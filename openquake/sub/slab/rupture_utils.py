@@ -1,4 +1,5 @@
 """
+:module:`openquake.sub.slab.rupture_utils`
 """
 
 import numpy as np
@@ -56,17 +57,29 @@ def get_ruptures(omsh, rup_s, rup_d, f_strike=1, f_dip=1):
     :returns:
 
     """
+    #
+    # When f_strike is negative, the floating distance is interpreted as
+    # a fraction of the rupture length (i.e. a multiple of the sampling
+    # distance)
     if f_strike < 0:
         f_strike = int(np.floor(rup_s * abs(f_strike) + 1e-5))
         if f_strike < 1:
             f_strike = 1
+    #
+    # see f_strike comment above
     if f_dip < 0:
         f_dip = int(np.floor(rup_d * abs(f_dip) + 1e-5))
         if f_dip < 1:
             f_dip = 1
+    #
+    # float the rupture on the virtual fault
     for i in np.arange(0, omsh.lons.shape[1] - rup_s + 1, f_strike):
         for j in np.arange(0, omsh.lons.shape[0] - rup_d + 1, f_dip):
-            if (np.all(np.isfinite(omsh.lons[j:j + rup_d, i:i + rup_s]))):
+            #
+            nel = np.size(omsh.lons[j:j + rup_d, i:i + rup_s])
+            nna = np.sum(np.isfinite(omsh.lons[j:j + rup_d, i:i + rup_s]))
+            prc = nna/nel*100.
+            if prc > 95. and nna >= 4:
                 yield ((omsh.lons[j:j + rup_d, i:i + rup_s],
                         omsh.lats[j:j + rup_d, i:i + rup_s],
                         omsh.depths[j:j + rup_d, i:i + rup_s]), j, i)
@@ -84,8 +97,9 @@ def get_weights(centroids, r, values, proj):
         A :class:`~numpy.ndarray` instance with lenght equal to the number of
         rows in the `centroids` matrix
     :param proj:
+        An instance of Proj
     :returns:
-
+        An :class:`numpy.ndarray` instance
     """
     #
     # set the projection
@@ -113,6 +127,7 @@ def get_weights(centroids, r, values, proj):
 
 def heron_formula(coords):
     """
+    TODO
     """
     pass
 
@@ -131,6 +146,9 @@ def get_mesh_area(mesh):
 
 def get_discrete_dimensions(area, sampling, aspr):
     """
+    Computes the discrete dimensions of a rupture given area, sampling
+    distance and aspect ratio.
+
     :param area:
     :param sampling:
     :param aspr:
@@ -164,8 +182,8 @@ def get_discrete_dimensions(area, sampling, aspr):
         wdt = wdtD
         dff = abs(lng2*wdtD-area)
     area_error = abs(lng*wdt-area)/area
-    # This is a check that verifies is the rupture size is compatible with the
-    # original value provided. If not, w
+    # This is a check that verifies if the rupture size is compatible with the
+    # original value provided. If not we raise a Value Error
     if (abs(wdt-sampling) < 1e-10 or abs(lng-sampling) < 1e-10 and
             area_error > 0.3):
         wdt = None

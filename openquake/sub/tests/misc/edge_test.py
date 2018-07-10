@@ -1,4 +1,5 @@
 """
+:module:`openquake.sub.test.misc.edge_test`
 """
 
 import os
@@ -6,8 +7,11 @@ import glob
 
 import numpy as np
 import unittest
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 from openquake.hazardlib.geo.geodetic import distance
+from openquake.hazardlib.geo.mesh import Mesh
 
 from openquake.sub.misc.edge import (_read_edge, _resample_edge,
                                      create_from_profiles, create_faults,
@@ -17,6 +21,50 @@ from openquake.sub.misc.profile import _read_profile
 
 
 BASE_DATA_PATH = os.path.dirname(__file__)
+
+
+class CreateFaultTest(unittest.TestCase):
+
+    def setUp(self):
+        path = os.path.join('..', 'data', 'misc', 'top_mesh')
+        x = np.loadtxt(os.path.join(path, 'top_mesh.x'))
+        y = np.loadtxt(os.path.join(path, 'top_mesh.y'))
+        z = np.loadtxt(os.path.join(path, 'top_mesh.z'))
+        self.mesh = np.stack((x, y, z), 2)
+
+    def test_create_virtual_fault(self):
+        """
+        Create profiles for the virtual fault and check that all are defined
+        """
+        thickness = 50.
+        angles = [30., 45., 90., 135]
+        sampling = 5
+        idx = 0
+        for angl in angles:
+            lines = create_faults(self.mesh, idx, thickness, angl, sampling)
+            for l in lines[0]:
+                pts = [[p.longitude, p.latitude, p.depth] for p in l.points]
+                pts = np.array(pts)
+                self.assertTrue(not np.any(np.isnan(pts)))
+
+        if False:
+            fig = plt.figure(figsize=(10, 8))
+            ax = fig.add_subplot(111, projection='3d')
+            fig = plt.figure()
+
+            ax.plot(self.mesh[idx, :, 0], self.mesh[idx, :, 1],
+                    self.mesh[idx, :, 2]*0.1, '-', lw=2)
+
+            for angl in angles:
+                lines = create_faults(self.mesh, 0, thickness, angl, sampling)
+                col = np.random.rand(3)
+                for l in lines[0]:
+                    pts = [[p.longitude, p.latitude, p.depth] for
+                           p in l.points]
+                    pts = np.array(pts)
+                    ax.plot(pts[:, 0], pts[:, 1], pts[:, 2]*0.1, '-',
+                            color=col)
+            plt.show()
 
 
 class MeanLongitudeTest(unittest.TestCase):
@@ -94,6 +142,11 @@ class CreateFromProfilesTest(unittest.TestCase):
         self.profiles2 = []
         for filename in sorted(glob.glob(path)):
             self.profiles2.append(_read_profile(filename))
+        #
+        path = os.path.join(BASE_DATA_PATH, '../data/profiles01/cs*.txt')
+        self.profiles3 = []
+        for filename in sorted(glob.glob(path)):
+            self.profiles3.append(_read_profile(filename))
 
     def _test_create0(self):
         """
@@ -117,13 +170,19 @@ class CreateFromProfilesTest(unittest.TestCase):
         msh = create_from_profiles(self.profiles2, 20, 25, False)
         #TODO
 
-    def test_create3(self):
+    def _test_create3(self):
         """
         Create edges from profiles 2
         """
         # sampling: profile, edge
         msh = create_from_profiles(self.profiles2, 50, 50, False)
-        #TODO
+
+    def test_create4(self):
+        """
+        """
+        msh = create_from_profiles(self.profiles3, 5, 5, False)
+        #print(msh)
+        assert not np.any(np.isnan(msh))
 
 
 class ResampleEdgeTest(unittest.TestCase):

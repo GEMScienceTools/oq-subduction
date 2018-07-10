@@ -1,9 +1,32 @@
 
-import numpy as np
+import os
 import unittest
+import numpy as np
 from openquake.sub.slab.rupture_utils import get_discrete_dimensions
 from openquake.sub.slab.rupture_utils import get_ruptures
 from openquake.hazardlib.geo.mesh import Mesh
+
+BASE_DATA_PATH = os.path.dirname(__file__)
+
+
+class CreateRuptureTest(unittest.TestCase):
+
+    def setUp(self):
+        # load data and create the mesh
+        path = os.path.join(BASE_DATA_PATH, '..', 'data', 'virtual_fault')
+        x = np.loadtxt(os.path.join(path, 'virtual_fault.x'))
+        y = np.loadtxt(os.path.join(path, 'virtual_fault.y'))
+        z = np.loadtxt(os.path.join(path, 'virtual_fault.z'))
+        self.mesh = Mesh(x, y, z)
+
+    def test_get_ruptures_m(self):
+        """
+        Test rupture generation
+        """
+        print(self.mesh.lons.shape)
+        print(sum(np.isnan(self.mesh.depths)))
+        rups = [r for r in get_ruptures(self.mesh, 1, 1)]
+        assert 0 == 1
 
 
 class RuptureGenerationTest(unittest.TestCase):
