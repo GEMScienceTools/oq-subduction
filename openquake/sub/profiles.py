@@ -87,18 +87,19 @@ class ProfileSet():
         grd = interpolate.griddata((arr[:, 0], arr[:, 1]), arr[:, 2],
                                    (xv[None, :], yv[:, None]), method=method)
 
-        import matplotlib.pyplot as plt
-        from mpl_toolkits.mplot3d import Axes3D
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection='3d')
-        for pro in self.profiles:
-            tmp = [[p.longitude, p.latitude, p.depth] for p in pro.points]
-            tmp = np.array(tmp)
-            ax.plot(tmp[:, 0], tmp[:, 1], tmp[:, 2], 'x--b', markersize=2)
-        print(grd.shape)
-        xg, yg = np.meshgrid(xv, yv)
-        print(xg.shape)
-        ax.plot(xg.flatten(), yg.flatten(), grd.flatten(), '.r', markersize=1)
-        plt.show()
+        if True:
+            import matplotlib.pyplot as plt
+            from mpl_toolkits.mplot3d import Axes3D
+            fig = plt.figure(figsize=(10, 8))
+            ax = fig.add_subplot(111, projection='3d')
+            for pro in self.profiles:
+                tmp = [[p.longitude, p.latitude, p.depth] for p in pro.points]
+                tmp = np.array(tmp)
+                ax.plot(tmp[:, 0], tmp[:, 1], tmp[:, 2], 'x--b', markersize=2)
+            print(grd.shape)
+            xg, yg = np.meshgrid(xv, yv)
+            print(xg.shape)
+            ax.plot(xg.flatten(), yg.flatten(), grd.flatten(), '.r', markersize=1)
+            plt.show()
 
         return grd

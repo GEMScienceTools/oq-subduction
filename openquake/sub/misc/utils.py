@@ -1,5 +1,7 @@
-import os
-import glob
+"""
+:module:`openquake.sub.misc.utils`
+"""
+
 import numpy as np
 
 from openquake.sub.misc.profile import _read_profile
@@ -37,6 +39,12 @@ def get_centroids(lons, lats, deps):
 
 
 def create_inslab_meshes(msh, dips, slab_thickness, sampling):
+    """
+    :param msh:
+    :param dips:
+    :param slab_thickness:
+    :param sampling:
+    """
     oms = {}
     for dip in dips:
         for i in range(0, msh.shape[0]):

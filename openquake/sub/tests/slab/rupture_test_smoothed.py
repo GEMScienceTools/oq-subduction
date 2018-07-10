@@ -51,15 +51,3 @@ class RuptureCreationSmoothedTest(unittest.TestCase):
         output_folder = os.path.join(BASE_DATA_PATH, '../data/tmp/')
         investigation_t = '1.'
         create(label, rupture_hdf5_fname, output_folder, investigation_t)
-
-    def _steps(self):
-        for name in sorted(dir(self)):
-            if name.startswith("step"):
-                yield name, getattr(self, name)
-
-    def test_steps(self):
-        for name, step in self._steps():
-            try:
-                step()
-            except Exception as e:
-                self.fail("{} failed ({}: {})".format(step, type(e), e))

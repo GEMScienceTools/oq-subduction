@@ -129,14 +129,15 @@ def create_faults(mesh, iedge, thickness, rot_angle, sampling):
     #
     # get indexes of the edge
     idxs = np.nonzero(np.isfinite(mesh[iedge, :, 2]))
-    # idxs = np.nonzero(np.isfinite(mesh[:, iedge, 2]))
     #
     # create a 3xn array with the points composing the mesh
     lld = np.array([mesh[:, :, 0].flatten('C'),
                     mesh[:, :, 1].flatten('C'),
                     mesh[:, :, 2].flatten('C')]).T
     idx = np.isnan(lld[:, 0])
+
     assert np.nanmax(mesh[:, :, 2]) < 750.
+
     #
     # project the points using Lambert Conic Conformal - for the reference
     # meridian 'lon_0' we use the mean longitude of the mesh
@@ -153,7 +154,9 @@ def create_faults(mesh, iedge, thickness, rot_angle, sampling):
     tmpx = np.reshape(x, shape,  order='C')
     tmpy = np.reshape(y, shape,  order='C')
     meshp = np.stack((tmpx, tmpy, mesh[:, :, 2]), axis=2)
+
     assert np.nanmax(meshp[:, :, 2]) < 750.
+
     #
     # check if the selected edge is continuous, otherwise split
     if np.all(np.diff(idxs) == 1):
@@ -184,7 +187,7 @@ def create_faults(mesh, iedge, thickness, rot_angle, sampling):
     tmp = np.vstack((meshp[:, :, 0].flatten(),
                      meshp[:, :, 1].flatten(),
                      meshp[:, :, 2].flatten())).T
-    idx = np.isfinite(tmp[:, 0])
+    idx = np.isfinite(tmp[:, 2])
     _, pppar = plane_fit(tmp[idx, :])
     #
     # process the edge
@@ -259,10 +262,17 @@ def create_faults(mesh, iedge, thickness, rot_angle, sampling):
             # is at a distance 'slab_tickness' below the original surface in a
             # direction perpendicular to the fitted planes
             corr = -1
-            dstances = np.arange(0, thickness+0.05*sampling, sampling)
+            dstances = np.arange(0, thickness-0.05*sampling, sampling)
             xls = meshp[iedge, ic, 0] + corr * dstances * dirc[0]
             yls = meshp[iedge, ic, 1] + corr * dstances * dirc[1]
             zls = meshp[iedge, ic, 2] + corr * dstances * dirc[2]
+
+            # CHECK THIS - This extends the last point of an addictional
+            # fraction of distance
+            xls[-1] += corr * sampling * 0.1 * dirc[0]
+            yls[-1] += corr * sampling * 0.1 * dirc[1]
+            zls[-1] += corr * sampling * 0.1 * dirc[2]
+
             #
             # back-conversion to geographic coordinates
             llo, lla = p(xls*1e3, yls*1e3, inverse=True)
@@ -277,6 +287,7 @@ def create_faults(mesh, iedge, thickness, rot_angle, sampling):
                 pc = Point(llo[0], lla[0], zls[0])
                 pd = Point(llo[-1], lla[-1], zls[-1])
                 out = intersect(pa, pb, pc, pd)
+                # passes if profiles intersect
                 if out:
                     check = True
                     loccheck = True
@@ -334,6 +345,9 @@ def create_faults(mesh, iedge, thickness, rot_angle, sampling):
                     """
             #
             # Update the profile list
+            assert not np.any(np.isnan(llo))
+            assert not np.any(np.isnan(lla))
+            assert not np.any(np.isnan(zls))
             line = Line([Point(x, y, z) for x, y, z in zip(llo, lla, zls)])
             if not loccheck:
                 temp_plist.append(line)
@@ -351,8 +365,9 @@ def create_faults(mesh, iedge, thickness, rot_angle, sampling):
 
     # if len(clist):
     #     plot_profiles(clist, mesh)
+
     #
-    # return the list of profiles groups. Each group is a set of lines
+    # Return the list of profiles groups. Each group is a set of lines
     return plist
 
 
@@ -465,6 +480,14 @@ def create_from_profiles(profiles, profile_sd, edge_sd, idl, align=False):
     tmps = 'Completed reading ({:d} loaded)'.format(len(rprofiles))
     logging.info(tmps)
     #
+    # check number of elements
+    chk = []
+    for p in rprofiles:
+        chk.append(len(p))
+    chk = np.array(chk)
+    if not np.all(np.diff(chk) == 0):
+        print(chk)
+    #
     # set the reference profile i.e. the longest one
     ref_idx = None
     max_length = -1e10
@@ -484,9 +507,8 @@ def create_from_profiles(profiles, profile_sd, edge_sd, idl, align=False):
     for pro in rprofiles:
         pnts = [(pnt.longitude, pnt.latitude, pnt.depth) for pnt in pro.points]
         pnts = np.array(pnts)
-
+        #
         assert np.all(pnts[:, 0] <= 180) & np.all(pnts[:, 0] >= -180)
-
         dst = distance(pnts[:-1, 0], pnts[:-1, 1], pnts[:-1, 2],
                        pnts[1:, 0], pnts[1:, 1], pnts[1:, 2])
         np.testing.assert_allclose(dst, profile_sd, rtol=1.)
@@ -599,7 +621,7 @@ def create_from_profiles(profiles, profile_sd, edge_sd, idl, align=False):
         ax.invert_zaxis()
         ax.view_init(50, 55)
         plt.show()
-        exit(0)
+        # exit(0)
     # --------------------------------------------------------------------------
     #
     # convert from profiles to edges
@@ -752,7 +774,7 @@ def get_mesh_back(pfs, rfi, sd, idl):
                         logging.warning(tmps)
                         #
                         # plotting
-                        if True:
+                        if False:
                             print('plotting')
                             fig = plt.figure(figsize=(10, 8))
                             ax = fig.add_subplot(111, projection='3d')
@@ -930,7 +952,7 @@ def get_mesh(pfs, rfi, sd, idl):
                         logging.warning(tmps)
                         #
                         # plotting
-                        if 1:
+                        if False:
                             fig = plt.figure(figsize=(10, 8))
                             ax = fig.add_subplot(111, projection='3d')
                             for ipro, pro in enumerate(pfs):

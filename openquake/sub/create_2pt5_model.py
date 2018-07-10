@@ -284,7 +284,7 @@ def main(argv):
     #
     # Check input
     if len(argv) < 3:
-        tmps = 'Usage: create_subduction_model.py <in_folder>'
+        tmps = 'Usage: create_2pt5_model.py <in_folder>'
         tmps += ' <ini_filename> <out_folder>'
         print(tmps)
         exit(0)
