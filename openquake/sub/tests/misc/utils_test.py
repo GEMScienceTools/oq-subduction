@@ -7,20 +7,20 @@ import numpy as np
 import unittest
 from openquake.sub.misc.utils import create_inslab_meshes
 
-BASE_DATA_PATH = os.path.dirname(__file__)
+BASE_DATA_PATH = os.path.abspath(os.path.dirname(__file__))
 
 
 class CreateVirtualFaultsTest(unittest.TestCase):
 
     def setUp(self):
         # load data and create the mesh
-        path = os.path.join('..', 'data', 'misc', 'top_mesh')
+        path = os.path.join(BASE_DATA_PATH, '..', 'data', 'misc', 'top_mesh')
         x = np.loadtxt(os.path.join(path, 'top_mesh.x'))
         y = np.loadtxt(os.path.join(path, 'top_mesh.y'))
         z = np.loadtxt(os.path.join(path, 'top_mesh.z'))
         self.mesh1 = np.stack((x, y, z), 2)
         # load data and create the mesh
-        path = os.path.join('..', 'data', 'misc', 'top_mesh_1')
+        path = os.path.join(BASE_DATA_PATH, '..', 'data', 'misc', 'top_mesh_1')
         x = np.loadtxt(os.path.join(path, 'top_mesh_x.txt'))
         y = np.loadtxt(os.path.join(path, 'top_mesh_y.txt'))
         z = np.loadtxt(os.path.join(path, 'top_mesh_z.txt'))

@@ -26,7 +26,7 @@ BASE_DATA_PATH = os.path.dirname(__file__)
 class CreateFaultTest(unittest.TestCase):
 
     def setUp(self):
-        path = os.path.join('..', 'data', 'misc', 'top_mesh')
+        path = os.path.join(BASE_DATA_PATH, '..', 'data', 'misc', 'top_mesh')
         x = np.loadtxt(os.path.join(path, 'top_mesh.x'))
         y = np.loadtxt(os.path.join(path, 'top_mesh.y'))
         z = np.loadtxt(os.path.join(path, 'top_mesh.z'))
@@ -148,47 +148,47 @@ class CreateFromProfilesTest(unittest.TestCase):
         for filename in sorted(glob.glob(path)):
             self.profiles3.append(_read_profile(filename))
 
-    def _test_create0(self):
+    def test_create0(self):
         """
         Create edges from profiles 0
         """
         # sampling: profile, edge
         msh = create_from_profiles(self.profiles, 10, 5, False)
 
-    def _test_create1(self):
+    def test_create1(self):
         """
         Create edges from profiles 1
         """
         # sampling: profile, edge
         msh = create_from_profiles(self.profiles1, 5, 5, False)
 
-    def _test_create2(self):
+    def test_create2(self):
         """
         Create edges from profiles 2
         """
         # sampling: profile, edge
         msh = create_from_profiles(self.profiles2, 20, 25, False)
-        #TODO
 
-    def _test_create3(self):
+    def test_create3(self):
         """
-        Create edges from profiles 2
+        Create edges from profiles 3
         """
         # sampling: profile, edge
         msh = create_from_profiles(self.profiles2, 50, 50, False)
 
-    def test_create4(self):
+    def _test_create4(self):
         """
+        Create edges from profiles 3
         """
         msh = create_from_profiles(self.profiles3, 5, 5, False)
-        #print(msh)
         assert not np.any(np.isnan(msh))
 
 
 class ResampleEdgeTest(unittest.TestCase):
 
     def setUp(self):
-        filename = os.path.join(BASE_DATA_PATH, '../data/slab/edge/edge_000.csv')
+        filename = os.path.join(BASE_DATA_PATH,
+                                '../data/slab/edge/edge_000.csv')
         self.edge = _read_edge(filename)
 
     def test_edge_resampling01(self):
@@ -243,7 +243,8 @@ class ResampleEdgeTest(unittest.TestCase):
 class ReadEdgeTest(unittest.TestCase):
 
     def setUp(self):
-        self.filename = os.path.join(BASE_DATA_PATH, '../data/slab/edge/edge_000.csv')
+        self.filename = os.path.join(BASE_DATA_PATH,
+                                     '../data/slab/edge/edge_000.csv')
 
     def test_read_profile(self):
         """

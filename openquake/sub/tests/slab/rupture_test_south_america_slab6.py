@@ -38,17 +38,13 @@ class RuptureCreationSouthAmericaTest(unittest.TestCase):
         build_complex_surface(in_path, max_sampl_dist, self.out_path,
                               upper_depth=50, lower_depth=200)
 
-    def step01(self):
+    def test_create(self):
         """
         Test rupture calculation
         """
         reff = os.path.join(BASE_DATA_PATH, '../data/ini/')
         calculate_ruptures(self.ini_fname, False, reff)
 
-    def test_step02(self):
-        """
-        Test source xml creation
-        """
         label = 'test'
         tmps = '../data/tmp/ruptures.hdf5'
         rupture_hdf5_fname = os.path.abspath(os.path.join(BASE_DATA_PATH,
@@ -61,17 +57,3 @@ class RuptureCreationSouthAmericaTest(unittest.TestCase):
         calculate_ruptures(self.ini_fname, False, reff)
 
         create(label, rupture_hdf5_fname, output_folder, investigation_t)
-
-"""
-    def _steps(self):
-        for name in sorted(dir(self)):
-            if name.startswith("step"):
-                yield name, getattr(self, name)
-
-    def test_steps(self):
-        for name, step in self._steps():
-            try:
-                step()
-            except Exception as e:
-                self.fail("{} failed ({}: {})".format(step, type(e), e))
-"""

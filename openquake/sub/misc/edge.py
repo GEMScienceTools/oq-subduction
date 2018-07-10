@@ -774,7 +774,7 @@ def get_mesh_back(pfs, rfi, sd, idl):
                         logging.warning(tmps)
                         #
                         # plotting
-                        if True:
+                        if False:
                             print('plotting')
                             fig = plt.figure(figsize=(10, 8))
                             ax = fig.add_subplot(111, projection='3d')
@@ -952,7 +952,7 @@ def get_mesh(pfs, rfi, sd, idl):
                         logging.warning(tmps)
                         #
                         # plotting
-                        if 1:
+                        if False:
                             fig = plt.figure(figsize=(10, 8))
                             ax = fig.add_subplot(111, projection='3d')
                             for ipro, pro in enumerate(pfs):

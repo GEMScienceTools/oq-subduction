@@ -21,12 +21,9 @@ class CreateRuptureTest(unittest.TestCase):
 
     def test_get_ruptures_m(self):
         """
-        Test rupture generation
+        TODO Test rupture generation
         """
-        print(self.mesh.lons.shape)
-        print(sum(np.isnan(self.mesh.depths)))
         rups = [r for r in get_ruptures(self.mesh, 1, 1)]
-        assert 0 == 1
 
 
 class RuptureGenerationTest(unittest.TestCase):

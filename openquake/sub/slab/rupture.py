@@ -190,9 +190,7 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
     allrup = {}
     iscnt = 0
     for dip in dips:
-        print('------------------------------------', dip)
         for mi, lines in enumerate(oms[dip]):
-            print('------------------------------------', mi)
             #
             # filter out small surfaces i.e. surfaces defined by less than
             # three profiles
@@ -247,7 +245,6 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
                 area = msr.get_median_area(mag=mag, rake=90)
                 rups = []
                 for aspr in asprs:
-                    print('{:5.2f} {:5.2f} '.format(mag, aspr), end='')
                     #
                     # IMPORTANT: the sampling here must be consistent with
                     # what we use for the construction of the mesh
@@ -288,8 +285,18 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
                         # fix the longitudes outside the standard [-180, 180]
                         # range
                         ij = np.isfinite(rup[0])
+                        iw = rup[0] > 180.
+                        ik = np.logical_and(ij, iw)
+                        rup[0][ik] -= 360
+
+                        """
                         iw = np.nonzero(rup[0][ij] > 180.)
-                        rup[0][ij[iw]] -= 360.
+                        if len(iw):
+                            print(type(rup), rup[0])
+                            print(ij[iw])
+                            rup[0][ij[iw]] -= 360.
+                        """
+
                         #if np.any(rup[0][j] > 180):
                         #    rup[0][rup[0] > 180.] = rup[0][rup[0] > 180.] - 360.
                         assert np.all(rup[0][ij] <= 180)
@@ -329,7 +336,6 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
                     allrup[lab] += rups
                 else:
                     allrup[lab] = rups
-                print('# rup:', counter)
             #
             # update counter
             iscnt += 1
@@ -524,7 +530,7 @@ def calculate_ruptures(ini_fname, only_plt=False, ref_fdr=None):
     msr = msrd[msrstr]()
     #
     # ------------------------------------------------------------------------
-    print('Reading profiles from:', path)
+    logging.info('Reading profiles from: {:s}'.format(path))
     profiles, pro_fnames = _read_profiles(path)
     assert len(profiles) > 0
     #
@@ -644,7 +650,7 @@ def calculate_ruptures(ini_fname, only_plt=False, ref_fdr=None):
     # save data on hdf5 file
     if os.path.exists(hdf5_filename):
         os.remove(hdf5_filename)
-    print('Creating ', hdf5_filename)
+    logging.info('Creating {:s}'.format(hdf5_filename))
     fh5 = h5py.File(hdf5_filename, 'w')
     grp_slab = fh5.create_group('slab')
     dset = grp_slab.create_dataset('top', data=msh)

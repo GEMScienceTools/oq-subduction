@@ -186,36 +186,29 @@ def regularize(mesh, spacing):
     #
     # find nodes within the delta X and delta Z distances
     idx = np.nonzero((dx <= dlt_x) & (dz <= dlt_z))
-    print(len(idx[0]))
     #
     # compute the equation of the plane fitting the portion of the slab surface
     xx = np.vstack((x[idx].T, y[idx].T, lld[idx, 2])).T
     pnt, ppar = plane_fit(xx)
-    print('ppar', ppar)
     #
     # vertical plane
     vertical_plane = [ppar[0], ppar[1], 0]
     vertical_plane = vertical_plane / (sum(vertical_plane)**2)**.5
-    print('vertical_plane', vertical_plane)
     #
     # strike direction
     stk = np.cross(ppar, vertical_plane)
     stk = stk / sum(stk**2.)**0.5
-    print('strike', stk)
     #
     # project the top left point on the plane surface. First we compute
     # the distance from the point to the plane then we find the coordinates
     # of the point. TODO
     t = -np.sum(ppar*lld[0, :])/np.sum(ppar**2)
     orig = np.array([ppar[0]*t+x[0], ppar[1]*t+y[0], ppar[2]*t+lld[0, 2]])
-    print('orig np:', [x[0], y[0], lld[0, 2]])
-    print('orig:', orig)
     #
     # compute the vector on the plane defining the steepest direction
     # https://www.physicsforums.com/threads/projecting-a-vector-onto-a-plane.496184/
     dip = np.cross(ppar, np.cross([0, 0, -1], ppar))
     dip = dip / sum(dip**2.)**0.5
-    print(dip)
     #
     # create the rectangle in 3D
     rects = []
@@ -228,7 +221,6 @@ def regularize(mesh, spacing):
     rects = np.array(rects)
 
     # lo, la = p(, lld[:,1])
-    print(rects)
 
     return rects
 
@@ -301,7 +293,6 @@ def create_lower_surface_mesh(mesh, slab_thickness):
                 try:
                     pnt, ppar = plane_fit(xx[ii, :])
                 except:
-                    print(xx)
                     raise ValueError('Plane interpolation failed')
             #
             # compute the points composing the new surface. The new surface
