@@ -205,29 +205,12 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
             #
             # create in-slab virtual fault - `lines` is the list of profiles
             # to be used for the construction of the virtual fault surface
-
             smsh = create_from_profiles(lines, sampling, sampling, idl, align)
-
-            outp = '/Users/mpagani/Repos/vnv/src/oq-subduction/openquake/sub/tests/data/profiles01'
-            if np.any(np.isnan(smsh)):
-                for jj, l in enumerate(lines):
-                    out = open(os.path.join(outp, 'cs_{:02d}.txt'.format(jj)), 'w')
-                    for p in l.points:
-                        out.write('{:f} {:f} {:f}\n'.format(p.longitude,
-                                                            p.latitude,
-                                                            p.depth))
-                    out.close()
-                # raise ValueError('NaN values')
-
-            # This checks that the virtual fault created does not contain NaN
-            # values
-            if np.any(np.isnan(smsh)):
-                tmps = 'dip {:.2f} index: {:d} has NaN values'
-                logging.warning(tmps.format(dip, mi))
-            # create mesh
+            #
+            # Create mesh
             omsh = Mesh(smsh[:, :, 0], smsh[:, :, 1], smsh[:, :, 2])
             #
-            # store data in the hdf5 file
+            # Store data in the hdf5 file
             grp_inslab.create_dataset('{:09d}'.format(iscnt), data=smsh)
             #
             # get centroids for a given virtual fault surface

@@ -480,14 +480,6 @@ def create_from_profiles(profiles, profile_sd, edge_sd, idl, align=False):
     tmps = 'Completed reading ({:d} loaded)'.format(len(rprofiles))
     logging.info(tmps)
     #
-    # check number of elements
-    chk = []
-    for p in rprofiles:
-        chk.append(len(p))
-    chk = np.array(chk)
-    if not np.all(np.diff(chk) == 0):
-        print(chk)
-    #
     # set the reference profile i.e. the longest one
     ref_idx = None
     max_length = -1e10
@@ -552,11 +544,6 @@ def create_from_profiles(profiles, profile_sd, edge_sd, idl, align=False):
     # create edges
     prfr = get_mesh(rprof, ref_idx, edge_sd, idl)
     logging.info('Completed creation of resampled profiles')
-
-    # for p in prfr:
-        # print(np.amin(p[:, 0]), np.amax(p[:, 0]))
-        # assert np.all(p[:, 0] >= -180) & np.all(p[:, 0] <= 180)
-
     #
     # create the mesh
     if ref_idx > 0:

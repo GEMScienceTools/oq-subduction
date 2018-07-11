@@ -96,9 +96,7 @@ class ProfileSet():
                 tmp = [[p.longitude, p.latitude, p.depth] for p in pro.points]
                 tmp = np.array(tmp)
                 ax.plot(tmp[:, 0], tmp[:, 1], tmp[:, 2], 'x--b', markersize=2)
-            print(grd.shape)
             xg, yg = np.meshgrid(xv, yv)
-            print(xg.shape)
             ax.plot(xg.flatten(), yg.flatten(), grd.flatten(), '.r', markersize=1)
             plt.show()
 
