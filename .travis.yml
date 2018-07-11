@@ -8,9 +8,9 @@ python:
  - "3.5"
 
 install:
-  - pip install openquake.engine
+  - pip install -e git+https://github.com/gem/oq-engine.git#egg=openquake.engine
   - pip install http://cdn.ftp.openquake.org/wheelhouse/linux/py35/pyproj-1.9.5.1-cp35-cp35m-manylinux1_x86_64.whl
-  - pip install .
+  - pip install -e .
 
 script:
-  - nosetests -vsx 
+  - nosetests -vsx openquake.sub
