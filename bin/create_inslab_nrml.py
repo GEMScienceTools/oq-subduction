@@ -94,7 +94,6 @@ def create(label, rupture_hdf5_fname, output_folder, investigation_t, srcid):
         grp = f['ruptures'][mag]
         if len(grp) < 1:
             tmps = 'Skipping ruptures for magnitude {:.2f}'.format(float(mag))
-            print(tmps)
             logging.warning(tmps)
             continue
         #
